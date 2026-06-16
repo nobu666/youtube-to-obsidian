@@ -7,7 +7,7 @@
 URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
 SCRIPT="$HOME/scripts/transcribe.py"
 RECIPE_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
-TRANSCRIPT_DIR="${RECIPE_DIR}/_transcripts"
+TRANSCRIPT_DIR="${RECIPE_DIR}/.transcripts"
 
 echo "=== Step 1/2: 文字起こし ==="
 if ! "$HOME/scripts/.venv/bin/python3" "$SCRIPT" "$URL"; then

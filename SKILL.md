@@ -1,6 +1,6 @@
 ---
 name: youtube-recipe-pipeline
-description: YouTube料理動画の文字起こしからObsidianレシピノートを生成するスキル。「レシピ化して」「文字起こしをレシピにして」「_transcriptsを処理して」「YouTubeのレシピを整理して」などで起動する。文字起こし済みテキストがない場合はローカル実行スクリプト（yt-dlp + mlx-whisper）のセットアップもガイドする。YouTube、レシピ、文字起こし、Obsidian、えのき、鶏肉、料理動画など食や動画に関連するキーワードが出たら積極的にこのスキルの利用を検討すること。
+description: YouTube料理動画の文字起こしからObsidianレシピノートを生成するスキル。「レシピ化して」「文字起こしをレシピにして」「.transcriptsを処理して」「YouTubeのレシピを整理して」などで起動する。文字起こし済みテキストがない場合はローカル実行スクリプト（yt-dlp + mlx-whisper）のセットアップもガイドする。YouTube、レシピ、文字起こし、Obsidian、えのき、鶏肉、料理動画など食や動画に関連するキーワードが出たら積極的にこのスキルの利用を検討すること。
 ---
 
 # YouTube Recipe Transcriber
@@ -9,8 +9,8 @@ YouTube料理動画の文字起こしテキストを読み取り、Obsidian Vaul
 
 ## 全体の流れ
 
-1. **文字起こし**（Macローカルで実行）: `~/scripts/transcribe.py` でYouTube動画の音声をダウンロードし、mlx-whisperで文字起こし。結果は `_transcripts/` フォルダに保存される。
-2. **レシピ化**: `_transcripts/` 内のテキストファイルを読み、レシピ形式に変換してObsidianフォルダに保存。
+1. **文字起こし**（Macローカルで実行）: `~/scripts/transcribe.py` でYouTube動画の音声をダウンロードし、mlx-whisperで文字起こし。結果は `.transcripts/` フォルダに保存される。
+2. **レシピ化**: `.transcripts/` 内のテキストファイルを読み、レシピ形式に変換してObsidianフォルダに保存。
 
 レシピ化は以下のどちらでも実行できる:
 - **CLIから**: `~/scripts/recipe` を実行（内部で `claude -p` を1件ずつ呼び出す）
@@ -24,8 +24,8 @@ YouTube料理動画の文字起こしテキストを読み取り、Obsidian Vaul
              ~/scripts/transcribe.py       → シンボリックリンク
 venv:        ~/scripts/.venv/
 Vault:       ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ/
-文字起こし:  <vault>/_transcripts/*.txt     （未処理）
-処理済み:    <vault>/_transcripts/done/     （レシピ変換済み）
+文字起こし:  <vault>/.transcripts/*.txt     （未処理）
+処理済み:    <vault>/.transcripts/done/     （レシピ変換済み）
 ```
 
 ## セットアップガイド
@@ -63,7 +63,7 @@ chmod +x ~/scripts/recipe
 
 ### 1. 文字起こしファイルを読む
 
-Obsidianレシピフォルダ内の `_transcripts/` ディレクトリにある `.txt` ファイルを読む。`done/` サブディレクトリ内のファイルは処理済みなので無視する。各ファイルの形式:
+Obsidianレシピフォルダ内の `.transcripts/` ディレクトリにある `.txt` ファイルを読む。`done/` サブディレクトリ内のファイルは処理済みなので無視する。各ファイルの形式:
 
 ```
 title: 動画タイトル
@@ -134,7 +134,7 @@ Obsidianレシピフォルダに直接保存する:
 
 ### 6. 処理済みファイルの扱い
 
-レシピ化が完了した文字起こしファイルは `_transcripts/done/` に移動する。これにより次回実行時に重複処理を防ぐ。
+レシピ化が完了した文字起こしファイルは `.transcripts/done/` に移動する。これにより次回実行時に重複処理を防ぐ。
 
 ## 既存レシピの例
 

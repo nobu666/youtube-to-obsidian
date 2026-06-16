@@ -12,7 +12,7 @@ brew、venv、シンボリックリンク、Claude Code スキルまで一括セ
 
 ## 仕組み
 
-1. **transcribe.py** — yt-dlp で音声抽出 → mlx-whisper でローカル文字起こし → `_transcripts/` に保存
+1. **transcribe.py** — yt-dlp で音声抽出 → mlx-whisper でローカル文字起こし → `.transcripts/` に保存
 2. **recipe** — transcribe.py を実行後、Claude CLI (`claude -p`) で文字起こしをレシピ形式に変換
 
 ## 必要なもの
@@ -94,7 +94,7 @@ source: https://www.youtube.com/watch?v=XXXXX
 
 ### 失敗した動画のリトライ
 
-失敗した文字起こしは `_transcripts/` に残るので、そのまま再実行すればレシピ変換だけリトライされる。
+失敗した文字起こしは `.transcripts/` に残るので、そのまま再実行すればレシピ変換だけリトライされる。
 
 ```bash
 ~/scripts/recipe
@@ -104,11 +104,11 @@ source: https://www.youtube.com/watch?v=XXXXX
 
 ```bash
 # 特定の動画を文字起こしからやり直し
-rm "<vault>/_transcripts/<video_id>.txt"
+rm "<vault>/.transcripts/<video_id>.txt"
 ~/scripts/recipe "https://www.youtube.com/watch?v=<video_id>"
 
 # 失敗分をまとめてやり直し
-rm <vault>/_transcripts/*.txt
+rm <vault>/.transcripts/*.txt
 ~/scripts/recipe
 ```
 
@@ -116,13 +116,13 @@ rm <vault>/_transcripts/*.txt
 
 | 場所 | 意味 |
 |------|------|
-| `_transcripts/*.txt` | 未処理 or レシピ変換に失敗した文字起こし |
-| `_transcripts/done/*.txt` | レシピ変換済みの文字起こし（参照用に保持） |
+| `.transcripts/*.txt` | 未処理 or レシピ変換に失敗した文字起こし |
+| `.transcripts/done/*.txt` | レシピ変換済みの文字起こし（参照用に保持） |
 | `<vault>/*.md` | 完成したレシピノート |
 
 ## Claude Code スキル
 
-`SKILL.md` を `~/.claude/commands/youtube-recipe-pipeline.md` に配置すると、Claude Code のどのセッションからでも `/youtube-recipe-pipeline` コマンドでレシピ変換を実行できる。`_transcripts/` 内の文字起こしファイルを読み取り、対話的にレシピ化する。
+`SKILL.md` を `~/.claude/commands/youtube-recipe-pipeline.md` に配置すると、Claude Code のどのセッションからでも `/youtube-recipe-pipeline` コマンドでレシピ変換を実行できる。`.transcripts/` 内の文字起こしファイルを読み取り、対話的にレシピ化する。
 
 ```bash
 # インストール
