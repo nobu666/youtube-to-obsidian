@@ -4,13 +4,18 @@
 #   recipe                           # デフォルトの再生リストを処理
 #   recipe https://youtube.com/...   # 指定URLを処理
 
+# caffeinate で再帰呼び出し（スリープ防止）
+if [ -z "$CAFFEINATED" ]; then
+  exec env CAFFEINATED=1 caffeinate -i "$0" "$@"
+fi
+
 URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
 SCRIPT="$HOME/scripts/transcribe.py"
 RECIPE_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
 TRANSCRIPT_DIR="${RECIPE_DIR}/.transcripts"
 
 echo "=== Step 1/2: 文字起こし ==="
-if ! "$HOME/scripts/.venv/bin/python3" "$SCRIPT" "$URL"; then
+if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$SCRIPT" "$URL"; then
   echo "文字起こしでエラーが発生しました（一部失敗の可能性あり）。"
   echo "成功分のレシピ変換を続行します..."
 fi
@@ -41,7 +46,7 @@ for TXT in "$TRANSCRIPT_DIR"/*.txt; do
   echo "[$((DONE + FAIL + 1))/${COUNT}] ${NAME}"
 
   BEFORE_COUNT=$(find "$RECIPE_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  OUTPUT=$(claude -p --dangerously-skip-permissions "
+  OUTPUT=$(nice -n 10 claude -p --dangerously-skip-permissions "
 $(cat "$TXT")
 
 ---
