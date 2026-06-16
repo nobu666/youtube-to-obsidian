@@ -129,6 +129,20 @@ rm <vault>/.transcripts/*.txt
 cp ~/repos/youtube-recipe-pipeline-pipeline/SKILL.md ~/.claude/commands/youtube-recipe-pipeline.md
 ```
 
+## 応用例
+
+このパイプラインの仕組み（YouTube → ローカル文字起こし → Claude で構造化 → Obsidian）は、`recipe` スクリプトのプロンプトと出力先を差し替えるだけで他の用途にも応用できる。
+
+| 動画のジャンル | 変換先のノート形式 |
+|---|---|
+| 技術チュートリアル | 手順書・コマンドチートシート |
+| 講義・セミナー | 要約ノート・キーポイント集 |
+| インタビュー・ポッドキャスト | Q&A形式のメモ |
+| DIY・修理動画 | 工程表・部品リスト |
+| 筋トレ・ヨガ | メニュー表（種目・セット数・時間） |
+
+文字起こし部分（`transcribe.py`）はジャンルに依存しないので、そのまま流用できる。
+
 ## 注意点
 
 - mlx-whisper は Apple Silicon 専用。Intel Mac では動かない
