@@ -2,6 +2,14 @@
 
 YouTube料理動画の音声を文字起こしし、Obsidianのレシピノートに自動変換するツール。
 
+## インストール
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/nobu666/youtube-recipe-pipeline/main/install.sh | bash
+```
+
+brew、venv、シンボリックリンク、Claude Code スキルまで一括セットアップ。既存環境では更新のみ行う。
+
 ## 仕組み
 
 1. **transcribe.py** — yt-dlp で音声抽出 → mlx-whisper でローカル文字起こし → `_transcripts/` に保存
