@@ -74,6 +74,6 @@ source: https://www.youtube.com/watch?v=XXXXX
 ## 注意点
 
 - mlx-whisper は Apple Silicon 専用。Intel Mac では動かない
-- Whisper medium モデル（750MB）を使用。初回実行時にダウンロードされる
+- Whisper large-v3 モデル（約3GB）を使用。初回実行時にダウンロードされる
 - 処理済みの動画はスキップされるので、中断しても再開可能
 - `MallocStackLogging` の警告が出ることがあるが無害

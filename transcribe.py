@@ -24,7 +24,7 @@ from pathlib import Path
 OBSIDIAN_RECIPE_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
 TRANSCRIPT_DIR = OBSIDIAN_RECIPE_DIR / "_transcripts"
 AUDIO_TMP_DIR = Path("/tmp/yt_recipe_audio")
-WHISPER_MODEL = "mlx-community/whisper-medium-mlx"
+WHISPER_MODEL = "mlx-community/whisper-large-v3-mlx"
 
 
 def setup_dirs():
