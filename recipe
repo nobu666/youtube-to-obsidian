@@ -24,22 +24,41 @@ if [ "$COUNT" = "0" ]; then
 fi
 echo "${COUNT}件の文字起こしをレシピに変換中..."
 
-claude -p "
-${TRANSCRIPT_DIR} 内の .txt ファイルを全てObsidianレシピ形式に変換して ${RECIPE_DIR} に保存して。
+DONE=0
+FAIL=0
+for TXT in "$TRANSCRIPT_DIR"/*.txt; do
+  [ -f "$TXT" ] || continue
+  NAME=$(basename "$TXT")
+  echo ""
+  echo "[$((DONE + FAIL + 1))/${COUNT}] ${NAME}"
+
+  if claude -p "
+$(cat "$TXT")
+
+---
+上の文字起こしをObsidianレシピ形式に変換して ${RECIPE_DIR} に保存して。
+ファイル名は料理名.md にして。
 
 フォーマット:
 ---
 created: (現在日時)
 updated: (現在日時)
-source: (動画URL)
+source: (動画URL ※文字起こしヘッダのurlを使う)
 ---
 # 料理名
 * 材料 分量
 1. 手順
-
-処理済みファイルは ${TRANSCRIPT_DIR}/done/ に移動して。
-進捗は1件ごとに標準エラー出力に表示して。
-"
+"; then
+    mkdir -p "${TRANSCRIPT_DIR}/done"
+    mv "$TXT" "${TRANSCRIPT_DIR}/done/"
+    DONE=$((DONE + 1))
+    echo "  → 完了"
+  else
+    FAIL=$((FAIL + 1))
+    echo "  → 失敗"
+  fi
+done
 
 echo ""
 echo "=== 完了 ==="
+echo "成功: ${DONE}件 / 失敗: ${FAIL}件"
