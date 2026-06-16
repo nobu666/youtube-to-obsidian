@@ -2,22 +2,21 @@
 """
 YouTube再生リストの動画を音声ダウンロード → Whisperで文字起こし。
 文字起こし結果はObsidianレシピフォルダ内の _transcripts/ に保存される。
-レシピへの変換はCoworkスキルが担当する。
+レシピへの変換は recipe スクリプト経由で Claude CLI が担当する。
 
 事前準備:
   brew install yt-dlp ffmpeg
-  pip3 install mlx-whisper
+  ~/scripts/.venv/bin/pip install mlx-whisper
 
 使い方:
-  python3 transcribe.py <再生リストURL>
-  python3 transcribe.py <動画URL>
-  python3 transcribe.py  # デフォルトの再生リストを使用
+  ~/scripts/.venv/bin/python3 transcribe.py <再生リストURL>
+  ~/scripts/.venv/bin/python3 transcribe.py <動画URL>
 """
 
 import subprocess
 import json
 import sys
-import time
+import tempfile
 from pathlib import Path
 
 # === 設定 ===
@@ -25,6 +24,7 @@ OBSIDIAN_RECIPE_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDoc
 TRANSCRIPT_DIR = OBSIDIAN_RECIPE_DIR / "_transcripts"
 AUDIO_TMP_DIR = Path("/tmp/yt_recipe_audio")
 WHISPER_MODEL = "mlx-community/whisper-medium-mlx"
+DONE_DIR = TRANSCRIPT_DIR / "done"
 
 
 def setup_dirs():
@@ -85,11 +85,6 @@ def download_audio(video):
 
 def transcribe_audio(audio_path, video):
     """Whisperで文字起こし"""
-    transcript_path = TRANSCRIPT_DIR / f"{video['id']}.txt"
-    if transcript_path.exists():
-        print(f"  文字起こし済み")
-        return transcript_path
-
     print(f"  文字起こし中...")
     try:
         import mlx_whisper
@@ -100,31 +95,49 @@ def transcribe_audio(audio_path, video):
             verbose=False
         )
         text = result["text"]
-    except ImportError:
-        print("  エラー: pip3 install mlx-whisper を実行してください。")
-        return None
     except Exception as e:
         print(f"  文字起こしエラー: {e}")
         return None
 
-    with open(transcript_path, "w", encoding="utf-8") as f:
-        f.write(f"title: {video['title']}\n")
-        f.write(f"video_id: {video['id']}\n")
-        f.write(f"url: {video['url']}\n")
-        f.write(f"---\n")
-        f.write(text)
+    transcript_path = TRANSCRIPT_DIR / f"{video['id']}.txt"
+    content = f"title: {video['title']}\nvideo_id: {video['id']}\nurl: {video['url']}\n---\n{text}"
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=TRANSCRIPT_DIR, suffix=".tmp")
+    try:
+        with open(tmp_fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        Path(tmp_path).replace(transcript_path)
+    except Exception:
+        Path(tmp_path).unlink(missing_ok=True)
+        raise
 
     return transcript_path
+
+
+def is_processed(video_id):
+    """文字起こし済み or レシピ変換済み（done/に移動済み）か判定"""
+    return (TRANSCRIPT_DIR / f"{video_id}.txt").exists() or (DONE_DIR / f"{video_id}.txt").exists()
+
+
+def check_mlx_whisper():
+    try:
+        import mlx_whisper  # noqa: F401
+        return True
+    except ImportError:
+        print("エラー: mlx-whisper がインストールされていません。")
+        print("  ~/scripts/.venv/bin/pip install mlx-whisper")
+        return False
 
 
 def main():
     setup_dirs()
 
-    # URLの決定
     if len(sys.argv) > 1:
         url = sys.argv[1]
     else:
-        print("使い方: python3 transcribe.py <YouTubeのURLまたは再生リストURL>")
+        print("使い方: ~/scripts/.venv/bin/python3 transcribe.py <YouTubeのURLまたは再生リストURL>")
+        sys.exit(1)
+
+    if not check_mlx_whisper():
         sys.exit(1)
 
     videos = get_videos(url)
@@ -137,8 +150,7 @@ def main():
     for i, video in enumerate(videos, 1):
         print(f"[{i}/{len(videos)}] {video['title'][:60]}")
 
-        transcript_path = TRANSCRIPT_DIR / f"{video['id']}.txt"
-        if transcript_path.exists():
+        if is_processed(video['id']):
             print(f"  スキップ（処理済み）\n")
             skipped += 1
             continue
@@ -160,7 +172,7 @@ def main():
     print(f"\n{'='*50}")
     print(f"完了！ 新規: {done}本 / スキップ: {skipped}本 / 失敗: {failed}本")
 
-    if failed > 0 and done == 0:
+    if failed > 0:
         sys.exit(1)
 
 
