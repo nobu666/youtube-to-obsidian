@@ -24,6 +24,8 @@ if [ "$COUNT" = "0" ]; then
 fi
 echo "${COUNT}件の文字起こしをレシピに変換中..."
 
+trap 'echo ""; echo "中断しました。"; exit 130' INT
+
 DONE=0
 FAIL=0
 for TXT in "$TRANSCRIPT_DIR"/*.txt; do
