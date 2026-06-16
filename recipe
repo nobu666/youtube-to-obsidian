@@ -1,0 +1,46 @@
+#!/bin/bash
+# YouTube再生リストからObsidianレシピを自動生成
+# 使い方:
+#   recipe                           # デフォルトの再生リストを処理
+#   recipe https://youtube.com/...   # 指定URLを処理
+
+URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
+SCRIPT="$HOME/scripts/transcribe.py"
+RECIPE_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
+TRANSCRIPT_DIR="${RECIPE_DIR}/_transcripts"
+
+echo "=== Step 1/2: 文字起こし ==="
+"$HOME/scripts/.venv/bin/python3" "$SCRIPT" "$URL"
+if [ $? -ne 0 ]; then
+  echo "文字起こしでエラーが発生しました。中断します。"
+  exit 1
+fi
+
+echo ""
+echo "=== Step 2/2: レシピ化 ==="
+COUNT=$(find "$TRANSCRIPT_DIR" -maxdepth 1 -name '*.txt' 2>/dev/null | wc -l | tr -d ' ')
+if [ "$COUNT" = "0" ]; then
+  echo "文字起こしファイルがありません。完了済みか、Step 1が失敗しています。"
+  exit 0
+fi
+echo "${COUNT}件の文字起こしをレシピに変換中..."
+
+claude -p "
+${TRANSCRIPT_DIR} 内の .txt ファイルを全てObsidianレシピ形式に変換して ${RECIPE_DIR} に保存して。
+
+フォーマット:
+---
+created: (現在日時)
+updated: (現在日時)
+source: (動画URL)
+---
+# 料理名
+* 材料 分量
+1. 手順
+
+処理済みファイルは ${TRANSCRIPT_DIR}/done/ に移動して。
+進捗は1件ごとに標準エラー出力に表示して。
+"
+
+echo ""
+echo "=== 完了 ==="
