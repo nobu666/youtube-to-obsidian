@@ -71,9 +71,45 @@ source: https://www.youtube.com/watch?v=XXXXX
 2. 手順2
 ```
 
+## 運用の流れ
+
+1. YouTubeの再生リストにレシピ動画を追加していく
+2. `~/scripts/recipe` を実行
+3. 完了後、最後に表示される処理結果を確認
+4. 問題なければ再生リストから処理済みの動画を削除
+
+### 失敗した動画のリトライ
+
+失敗した文字起こしは `_transcripts/` に残るので、そのまま再実行すればレシピ変換だけリトライされる。
+
+```bash
+~/scripts/recipe
+```
+
+文字起こし自体の品質が悪かった場合は、文字起こしファイルを削除してからやり直す。
+
+```bash
+# 特定の動画を文字起こしからやり直し
+rm "<vault>/_transcripts/<video_id>.txt"
+~/scripts/recipe "https://www.youtube.com/watch?v=<video_id>"
+
+# 失敗分をまとめてやり直し
+rm <vault>/_transcripts/*.txt
+~/scripts/recipe
+```
+
+### ファイルの状態
+
+| 場所 | 意味 |
+|------|------|
+| `_transcripts/*.txt` | 未処理 or レシピ変換に失敗した文字起こし |
+| `_transcripts/done/*.txt` | レシピ変換済みの文字起こし（参照用に保持） |
+| `<vault>/*.md` | 完成したレシピノート |
+
 ## 注意点
 
 - mlx-whisper は Apple Silicon 専用。Intel Mac では動かない
 - Whisper large-v3 モデル（約3GB）を使用。初回実行時にダウンロードされる
 - 処理済みの動画はスキップされるので、中断しても再開可能
+- Whisperのハルシネーション（同一フレーズの繰り返し）は自動検出してスキップする
 - `MallocStackLogging` の警告が出ることがあるが無害
