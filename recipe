@@ -26,16 +26,21 @@ echo "${COUNT}件の文字起こしをレシピに変換中..."
 
 trap 'echo ""; echo "中断しました。"; exit 130' INT
 
+DONE_DIR="${TRANSCRIPT_DIR}/done"
+mkdir -p "$DONE_DIR"
+
 DONE=0
 FAIL=0
 FAILED_FILES=()
+RESULTS=()
 for TXT in "$TRANSCRIPT_DIR"/*.txt; do
   [ -f "$TXT" ] || continue
   NAME=$(basename "$TXT")
+  TITLE=$(head -1 "$TXT" | sed 's/^title: //')
   echo ""
   echo "[$((DONE + FAIL + 1))/${COUNT}] ${NAME}"
 
-  if claude -p --dangerously-skip-permissions "
+  OUTPUT=$(claude -p --dangerously-skip-permissions "
 $(cat "$TXT")
 
 ---
@@ -54,13 +59,16 @@ source: (動画URL ※文字起こしヘッダのurlを使う)
 # 料理名
 * 材料 分量
 1. 手順
-"; then
-    rm "$TXT"
+" 2>&1)
+  if [ $? -eq 0 ]; then
+    mv "$TXT" "$DONE_DIR/"
     DONE=$((DONE + 1))
+    RESULTS+=("✓ ${TITLE}|${OUTPUT}")
     echo "  → 完了"
   else
     FAIL=$((FAIL + 1))
     FAILED_FILES+=("$TXT")
+    RESULTS+=("✗ ${TITLE}|${OUTPUT}")
     echo "  → 失敗"
   fi
 done
@@ -68,6 +76,18 @@ done
 echo ""
 echo "=== 完了 ==="
 echo "成功: ${DONE}件 / 失敗: ${FAIL}件"
+
+if [ ${#RESULTS[@]} -gt 0 ]; then
+  echo ""
+  echo "=== 処理結果 ==="
+  for R in "${RESULTS[@]}"; do
+    HEADER="${R%%|*}"
+    BODY="${R#*|}"
+    echo ""
+    echo "--- ${HEADER} ---"
+    echo "$BODY"
+  done
+fi
 
 if [ ${#FAILED_FILES[@]} -gt 0 ]; then
   echo ""
@@ -83,7 +103,7 @@ if [ ${#FAILED_FILES[@]} -gt 0 ]; then
   echo "  1. そのまま再実行（失敗分だけリトライされる）:"
   echo "     ~/scripts/recipe"
   echo "  2. 文字起こしからやり直す（文字起こし品質が原因の場合）:"
-  echo "     rm ${TRANSCRIPT_DIR}/<video_id>.txt"
+  echo "     rm \"${TRANSCRIPT_DIR}/<video_id>.txt\""
   echo "     ~/scripts/recipe \"https://www.youtube.com/watch?v=<video_id>\""
   echo "  3. 動画を直接見てObsidianに手動で書く"
 fi
