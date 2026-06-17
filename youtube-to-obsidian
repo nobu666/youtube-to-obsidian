@@ -4,6 +4,7 @@
 #   youtube-to-obsidian                                    # デフォルトの再生リストを処理
 #   youtube-to-obsidian https://youtube.com/...            # 指定URLを処理
 #   youtube-to-obsidian -p recipe <URL>                    # プロンプトを指定（prompts/recipe.txt）
+#   youtube-to-obsidian -p recipe -o ~/notes <URL>        # 出力先を上書き
 
 # caffeinate で再帰呼び出し（スリープ防止）
 if [ -z "$CAFFEINATED" ]; then
@@ -13,8 +14,9 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 PROMPTS_DIR="${SCRIPT_DIR}/prompts"
 PROMPT_FILE="${PROMPTS_DIR}/default.txt"
+OUTPUT_DIR_OVERRIDE=""
 
-while getopts "p:" opt; do
+while getopts "p:o:" opt; do
   case $opt in
     p)
       if [ -f "$OPTARG" ]; then
@@ -32,26 +34,49 @@ while getopts "p:" opt; do
         exit 1
       fi
       ;;
+    o) OUTPUT_DIR_OVERRIDE="$OPTARG" ;;
     *)
-      echo "使い方: youtube-to-obsidian [-p prompt] [URL]"
+      echo "使い方: youtube-to-obsidian [-p prompt] [-o output_dir] [URL]"
       exit 1
       ;;
   esac
 done
 shift $((OPTIND - 1))
 
-URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
-SCRIPT="$HOME/scripts/transcribe.py"
-OUTPUT_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
-TRANSCRIPT_DIR="${OUTPUT_DIR}/.transcripts"
-
 if [ ! -f "$PROMPT_FILE" ]; then
   echo "エラー: プロンプトファイルが見つかりません: $PROMPT_FILE"
   exit 1
 fi
 
+# プロンプトファイルからヘッダ（output_dir）と本文を分離
+HEADER_OUTPUT_DIR=""
+PROMPT_BODY=""
+if head -1 "$PROMPT_FILE" | grep -q '^output_dir:'; then
+  HEADER_OUTPUT_DIR=$(head -1 "$PROMPT_FILE" | sed 's/^output_dir: *//')
+  HEADER_OUTPUT_DIR="${HEADER_OUTPUT_DIR/#\~/$HOME}"
+  PROMPT_BODY=$(sed '1,/^---$/d' "$PROMPT_FILE")
+else
+  PROMPT_BODY=$(cat "$PROMPT_FILE")
+fi
+
+# 出力先の決定: -o > ヘッダ > デフォルト
+if [ -n "$OUTPUT_DIR_OVERRIDE" ]; then
+  OUTPUT_DIR="${OUTPUT_DIR_OVERRIDE/#\~/$HOME}"
+elif [ -n "$HEADER_OUTPUT_DIR" ]; then
+  OUTPUT_DIR="$HEADER_OUTPUT_DIR"
+else
+  OUTPUT_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube"
+fi
+
+URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
+SCRIPT="$HOME/scripts/transcribe.py"
+TRANSCRIPT_DIR="${OUTPUT_DIR}/.transcripts"
+
+mkdir -p "$OUTPUT_DIR"
+
 echo "=== Step 1/2: 文字起こし ==="
-if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$SCRIPT" "$URL"; then
+echo "出力先: ${OUTPUT_DIR}"
+if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$SCRIPT" -o "$OUTPUT_DIR" "$URL"; then
   echo "文字起こしでエラーが発生しました（一部失敗の可能性あり）。"
   echo "成功分のノート変換を続行します..."
 fi
@@ -82,7 +107,7 @@ for TXT in "$TRANSCRIPT_DIR"/*.txt; do
   echo "[$((DONE + FAIL + 1))/${COUNT}] ${NAME}"
 
   BEFORE_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  PROMPT=$(sed "s|{{OUTPUT_DIR}}|${OUTPUT_DIR}|g" "$PROMPT_FILE")
+  PROMPT=$(echo "$PROMPT_BODY" | sed "s|{{OUTPUT_DIR}}|${OUTPUT_DIR}|g")
   OUTPUT=$(nice -n 10 claude -p --dangerously-skip-permissions "
 $(cat "$TXT")
 

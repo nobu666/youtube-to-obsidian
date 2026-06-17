@@ -5,6 +5,7 @@ YouTube動画の音声をダウンロードし、Whisperで文字起こしする
 構造化ノートへの変換は youtube-to-obsidian スクリプト経由で Claude CLI が担当する。
 """
 
+import argparse
 import os
 import re
 import subprocess
@@ -18,7 +19,8 @@ os.environ["MALLOC_STACK_LOGGING"] = ""
 warnings.filterwarnings("ignore", message=".*unauthenticated.*HF Hub.*")
 
 # === 設定 ===
-OBSIDIAN_OUTPUT_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
+DEFAULT_OUTPUT_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube"
+OBSIDIAN_OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 TRANSCRIPT_DIR = OBSIDIAN_OUTPUT_DIR / ".transcripts"
 AUDIO_TMP_DIR = Path("/tmp/yt_obsidian_audio")
 WHISPER_MODEL = "mlx-community/whisper-large-v3-mlx"
@@ -202,13 +204,20 @@ def check_mlx_whisper():
 
 
 def main():
-    setup_dirs()
+    global OBSIDIAN_OUTPUT_DIR, TRANSCRIPT_DIR, DONE_DIR
 
-    if len(sys.argv) > 1:
-        url = sys.argv[1]
-    else:
-        print("使い方: ~/scripts/.venv/bin/python3 transcribe.py <YouTubeのURLまたは再生リストURL>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="YouTube動画を文字起こしする")
+    parser.add_argument("url", help="YouTubeのURLまたは再生リストURL")
+    parser.add_argument("-o", "--output-dir", help="出力先ディレクトリ")
+    args = parser.parse_args()
+    url = args.url
+
+    if args.output_dir:
+        OBSIDIAN_OUTPUT_DIR = Path(args.output_dir).expanduser()
+        TRANSCRIPT_DIR = OBSIDIAN_OUTPUT_DIR / ".transcripts"
+        DONE_DIR = TRANSCRIPT_DIR / "done"
+
+    setup_dirs()
 
     if not check_mlx_whisper():
         sys.exit(1)

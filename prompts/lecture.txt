@@ -1,3 +1,5 @@
+output_dir: ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube/講義
+---
 上の文字起こしをObsidian講義ノート形式に変換して {{OUTPUT_DIR}} に保存して。
 ファイル名はテーマ名.md にして。
 ルール:

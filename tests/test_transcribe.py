@@ -20,6 +20,7 @@ def override_dirs(tmp_path, monkeypatch):
     audio_dir = tmp_path / "audio"
     audio_dir.mkdir()
 
+    monkeypatch.setattr(transcribe, "DEFAULT_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(transcribe, "OBSIDIAN_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(transcribe, "TRANSCRIPT_DIR", transcript_dir)
     monkeypatch.setattr(transcribe, "DONE_DIR", done_dir)
@@ -353,7 +354,7 @@ class TestMain:
         monkeypatch.setattr(sys, "argv", ["transcribe.py"])
         with pytest.raises(SystemExit) as exc_info:
             transcribe.main()
-        assert exc_info.value.code == 1
+        assert exc_info.value.code == 2
 
     def test_missing_mlx_whisper_exits(self, monkeypatch):
         monkeypatch.setattr(transcribe, "check_mlx_whisper", lambda: False)

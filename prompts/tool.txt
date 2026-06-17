@@ -1,3 +1,5 @@
+output_dir: ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube/ツール
+---
 上の文字起こしをObsidianツール解説ノート形式に変換して {{OUTPUT_DIR}} に保存して。
 ファイル名はツール名.md にして。
 ルール:
