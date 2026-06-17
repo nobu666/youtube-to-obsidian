@@ -1,4 +1,4 @@
-output_dir: ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ
+output_dir: ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube/レシピ
 ---
 上の文字起こしをObsidianレシピ形式に変換して {{OUTPUT_DIR}} に保存して。
 ファイル名は料理名.md にして。
