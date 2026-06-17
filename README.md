@@ -13,7 +13,7 @@ brew、venv、シンボリックリンク、Claude Code スキルまで一括セ
 ## 仕組み
 
 1. **transcribe.py** — yt-dlp で音声抽出 → mlx-whisper でローカル文字起こし → `.transcripts/` に保存
-2. **recipe** — transcribe.py を実行後、Claude CLI (`claude -p`) で文字起こしを構造化ノートに変換（現在はレシピ形式）
+2. **youtube-to-obsidian** — transcribe.py を実行後、Claude CLI (`claude -p`) で文字起こしを構造化ノートに変換（現在はレシピ形式）
 
 ## 必要なもの
 
@@ -37,7 +37,7 @@ python3.12 -m venv ~/scripts/.venv
 
 # シンボリックリンクを作成
 mkdir -p ~/scripts
-ln -s ~/repos/youtube-to-obsidian/recipe ~/scripts/recipe
+ln -s ~/repos/youtube-to-obsidian/youtube-to-obsidian ~/scripts/youtube-to-obsidian
 ln -s ~/repos/youtube-to-obsidian/transcribe.py ~/scripts/transcribe.py
 
 # Claude Code のスキルをインストール（任意）
@@ -45,23 +45,23 @@ mkdir -p ~/.claude/commands
 cp ~/repos/youtube-to-obsidian/SKILL.md ~/.claude/commands/youtube-to-obsidian.md
 ```
 
-`recipe` 内のパスを自分の環境に合わせて編集:
+`youtube-to-obsidian` 内のパスを自分の環境に合わせて編集:
 
 ```bash
 SCRIPT="$HOME/scripts/transcribe.py"                                          # transcribe.py のパス
-RECIPE_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"  # Obsidian Vault のパス
+OUTPUT_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"  # Obsidian Vault のパス
 ```
 
-`transcribe.py` 内の `OBSIDIAN_RECIPE_DIR` も同様に変更。
+`transcribe.py` 内の `OBSIDIAN_OUTPUT_DIR` も同様に変更。
 
 ## 使い方
 
 ```bash
 # 再生リストをまとめて処理
-~/scripts/recipe https://www.youtube.com/playlist?list=XXXXX
+~/scripts/youtube-to-obsidian https://www.youtube.com/playlist?list=XXXXX
 
 # 単体の動画
-~/scripts/recipe https://www.youtube.com/watch?v=XXXXX
+~/scripts/youtube-to-obsidian https://www.youtube.com/watch?v=XXXXX
 
 # 文字起こしだけ（ノート変換なし）
 ~/scripts/.venv/bin/python3 ~/scripts/transcribe.py https://www.youtube.com/watch?v=XXXXX
@@ -88,7 +88,7 @@ source: https://www.youtube.com/watch?v=XXXXX
 ## 運用の流れ
 
 1. YouTubeの再生リストにノート化したい動画を追加していく
-2. `~/scripts/recipe` を実行
+2. `~/scripts/youtube-to-obsidian` を実行
 3. 完了後、最後に表示される処理結果を確認
 4. 問題なければ再生リストから処理済みの動画を削除
 
@@ -97,7 +97,7 @@ source: https://www.youtube.com/watch?v=XXXXX
 失敗した文字起こしは `.transcripts/` に残るので、そのまま再実行すればノート変換だけリトライされる。
 
 ```bash
-~/scripts/recipe
+~/scripts/youtube-to-obsidian
 ```
 
 文字起こし自体の品質が悪かった場合は、文字起こしファイルを削除してからやり直す。
@@ -105,11 +105,11 @@ source: https://www.youtube.com/watch?v=XXXXX
 ```bash
 # 特定の動画を文字起こしからやり直し
 rm "<vault>/.transcripts/<video_id>.txt"
-~/scripts/recipe "https://www.youtube.com/watch?v=<video_id>"
+~/scripts/youtube-to-obsidian "https://www.youtube.com/watch?v=<video_id>"
 
 # 失敗分をまとめてやり直し
 rm <vault>/.transcripts/*.txt
-~/scripts/recipe
+~/scripts/youtube-to-obsidian
 ```
 
 ### ファイルの状態

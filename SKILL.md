@@ -13,14 +13,14 @@ YouTube料理動画の文字起こしテキストを読み取り、Obsidian Vaul
 2. **レシピ化**: `.transcripts/` 内のテキストファイルを読み、レシピ形式に変換してObsidianフォルダに保存。
 
 レシピ化は以下のどちらでも実行できる:
-- **CLIから**: `~/scripts/recipe` を実行（内部で `claude -p` を1件ずつ呼び出す）
+- **CLIから**: `~/scripts/youtube-to-obsidian` を実行（内部で `claude -p` を1件ずつ呼び出す）
 - **このスキル**: Coworkや対話セッション内で直接実行
 
 ## パス情報
 
 ```
 リポジトリ:  ~/repos/youtube-to-obsidian/
-スクリプト:  ~/scripts/recipe              → シンボリックリンク
+スクリプト:  ~/scripts/youtube-to-obsidian  → シンボリックリンク
              ~/scripts/transcribe.py       → シンボリックリンク
 venv:        ~/scripts/.venv/
 Vault:       ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ/
@@ -41,19 +41,19 @@ python3.12 -m venv ~/scripts/.venv
 
 # リポジトリのクローンとシンボリックリンク
 git clone https://github.com/nobu666/youtube-to-obsidian.git ~/repos/youtube-to-obsidian
-ln -s ~/repos/youtube-to-obsidian/recipe ~/scripts/recipe
+ln -s ~/repos/youtube-to-obsidian/youtube-to-obsidian ~/scripts/youtube-to-obsidian
 ln -s ~/repos/youtube-to-obsidian/transcribe.py ~/scripts/transcribe.py
-chmod +x ~/scripts/recipe
+chmod +x ~/scripts/youtube-to-obsidian
 ```
 
 文字起こしの実行:
 
 ```bash
 # 再生リストをまとめて処理
-~/scripts/recipe https://www.youtube.com/playlist?list=XXXXX
+~/scripts/youtube-to-obsidian https://www.youtube.com/playlist?list=XXXXX
 
 # 単体の動画
-~/scripts/recipe https://www.youtube.com/watch?v=XXXXX
+~/scripts/youtube-to-obsidian https://www.youtube.com/watch?v=XXXXX
 
 # 文字起こしだけ（レシピ変換なし）
 ~/scripts/.venv/bin/python3 ~/scripts/transcribe.py https://www.youtube.com/watch?v=XXXXX

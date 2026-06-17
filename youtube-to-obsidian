@@ -1,8 +1,8 @@
 #!/bin/bash
-# YouTube再生リストからObsidianレシピを自動生成
+# YouTube動画をObsidianノートに自動変換
 # 使い方:
-#   recipe                           # デフォルトの再生リストを処理
-#   recipe https://youtube.com/...   # 指定URLを処理
+#   youtube-to-obsidian                           # デフォルトの再生リストを処理
+#   youtube-to-obsidian https://youtube.com/...   # 指定URLを処理
 
 # caffeinate で再帰呼び出し（スリープ防止）
 if [ -z "$CAFFEINATED" ]; then
@@ -12,8 +12,8 @@ fi
 URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 SCRIPT="$HOME/scripts/transcribe.py"
-RECIPE_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
-TRANSCRIPT_DIR="${RECIPE_DIR}/.transcripts"
+OUTPUT_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
+TRANSCRIPT_DIR="${OUTPUT_DIR}/.transcripts"
 PROMPT_FILE="${SCRIPT_DIR}/prompt.txt"
 
 if [ ! -f "$PROMPT_FILE" ]; then
@@ -24,17 +24,17 @@ fi
 echo "=== Step 1/2: 文字起こし ==="
 if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$SCRIPT" "$URL"; then
   echo "文字起こしでエラーが発生しました（一部失敗の可能性あり）。"
-  echo "成功分のレシピ変換を続行します..."
+  echo "成功分のノート変換を続行します..."
 fi
 
 echo ""
-echo "=== Step 2/2: レシピ化 ==="
+echo "=== Step 2/2: ノート変換 ==="
 COUNT=$(find "$TRANSCRIPT_DIR" -maxdepth 1 -name '*.txt' 2>/dev/null | wc -l | tr -d ' ')
 if [ "$COUNT" = "0" ]; then
   echo "文字起こしファイルがありません。完了済みか、Step 1が失敗しています。"
   exit 0
 fi
-echo "${COUNT}件の文字起こしをレシピに変換中..."
+echo "${COUNT}件の文字起こしをノートに変換中..."
 
 trap 'echo ""; echo "中断しました。"; exit 130' INT
 
@@ -52,15 +52,15 @@ for TXT in "$TRANSCRIPT_DIR"/*.txt; do
   echo ""
   echo "[$((DONE + FAIL + 1))/${COUNT}] ${NAME}"
 
-  BEFORE_COUNT=$(find "$RECIPE_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  PROMPT=$(sed "s|{{OUTPUT_DIR}}|${RECIPE_DIR}|g" "$PROMPT_FILE")
+  BEFORE_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+  PROMPT=$(sed "s|{{OUTPUT_DIR}}|${OUTPUT_DIR}|g" "$PROMPT_FILE")
   OUTPUT=$(nice -n 10 claude -p --dangerously-skip-permissions "
 $(cat "$TXT")
 
 ---
 ${PROMPT}
 " 2>&1)
-  AFTER_COUNT=$(find "$RECIPE_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+  AFTER_COUNT=$(find "$OUTPUT_DIR" -maxdepth 1 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
   if [ "$AFTER_COUNT" -gt "$BEFORE_COUNT" ]; then
     mv "$TXT" "$DONE_DIR/"
     DONE=$((DONE + 1))
@@ -102,9 +102,9 @@ if [ ${#FAILED_FILES[@]} -gt 0 ]; then
   echo ""
   echo "対応方法:"
   echo "  1. そのまま再実行（失敗分だけリトライされる）:"
-  echo "     ~/scripts/recipe"
+  echo "     ~/scripts/youtube-to-obsidian"
   echo "  2. 文字起こしからやり直す（文字起こし品質が原因の場合）:"
   echo "     rm \"${TRANSCRIPT_DIR}/<video_id>.txt\""
-  echo "     ~/scripts/recipe \"https://www.youtube.com/watch?v=<video_id>\""
+  echo "     ~/scripts/youtube-to-obsidian \"https://www.youtube.com/watch?v=<video_id>\""
   echo "  3. 動画を直接見てObsidianに手動で書く"
 fi

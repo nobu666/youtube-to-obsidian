@@ -20,7 +20,7 @@ def override_dirs(tmp_path, monkeypatch):
     audio_dir = tmp_path / "audio"
     audio_dir.mkdir()
 
-    monkeypatch.setattr(transcribe, "OBSIDIAN_RECIPE_DIR", tmp_path)
+    monkeypatch.setattr(transcribe, "OBSIDIAN_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(transcribe, "TRANSCRIPT_DIR", transcript_dir)
     monkeypatch.setattr(transcribe, "DONE_DIR", done_dir)
     monkeypatch.setattr(transcribe, "AUDIO_TMP_DIR", audio_dir)

@@ -2,7 +2,7 @@
 """
 YouTube動画の音声をダウンロードし、Whisperで文字起こしする。
 結果はObsidian Vault内の .transcripts/ に保存される。
-構造化ノートへの変換は recipe スクリプト経由で Claude CLI が担当する。
+構造化ノートへの変換は youtube-to-obsidian スクリプト経由で Claude CLI が担当する。
 """
 
 import os
@@ -18,9 +18,9 @@ os.environ["MALLOC_STACK_LOGGING"] = ""
 warnings.filterwarnings("ignore", message=".*unauthenticated.*HF Hub.*")
 
 # === 設定 ===
-OBSIDIAN_RECIPE_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
-TRANSCRIPT_DIR = OBSIDIAN_RECIPE_DIR / ".transcripts"
-AUDIO_TMP_DIR = Path("/tmp/yt_recipe_audio")
+OBSIDIAN_OUTPUT_DIR = Path.home() / "Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ"
+TRANSCRIPT_DIR = OBSIDIAN_OUTPUT_DIR / ".transcripts"
+AUDIO_TMP_DIR = Path("/tmp/yt_obsidian_audio")
 WHISPER_MODEL = "mlx-community/whisper-large-v3-mlx"
 DONE_DIR = TRANSCRIPT_DIR / "done"
 

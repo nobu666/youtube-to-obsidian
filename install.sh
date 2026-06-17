@@ -36,7 +36,7 @@ fi
 echo ""
 echo "--- シンボリックリンク ---"
 mkdir -p "$SCRIPTS_DIR"
-ln -sf "$REPO_DIR/recipe" "$SCRIPTS_DIR/recipe"
+ln -sf "$REPO_DIR/youtube-to-obsidian" "$SCRIPTS_DIR/youtube-to-obsidian"
 ln -sf "$REPO_DIR/transcribe.py" "$SCRIPTS_DIR/transcribe.py"
 
 # Claude Code スキル
@@ -47,5 +47,5 @@ cp "$REPO_DIR/SKILL.md" "$HOME/.claude/commands/youtube-to-obsidian.md"
 
 echo ""
 echo "=== 完了 ==="
-echo "使い方: ~/scripts/recipe <YouTube URL>"
-echo "スキル: Claude Code で /youtube-recipe"
+echo "使い方: ~/scripts/youtube-to-obsidian <YouTube URL>"
+echo "スキル: Claude Code で /youtube-to-obsidian"
