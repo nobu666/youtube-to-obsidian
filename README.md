@@ -131,7 +131,7 @@ cp ~/repos/youtube-to-obsidian/SKILL.md ~/.claude/commands/youtube-to-obsidian.m
 
 ## 応用例
 
-このパイプラインの仕組み（YouTube → ローカル文字起こし → Claude で構造化 → Obsidian）は、`recipe` スクリプトのプロンプトと出力先を差し替えるだけで他の用途にも応用できる。
+このパイプラインの仕組み（YouTube → ローカル文字起こし → Claude で構造化 → Obsidian）は、`prompt.txt` と出力先を差し替えるだけで他の用途にも応用できる。
 
 | 動画のジャンル | 変換先のノート形式 |
 |---|---|
