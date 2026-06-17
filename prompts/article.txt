@@ -1,4 +1,4 @@
-output_dir: ~/Documents/Obsidian/Vault/YouTube
+output_dir: ~/Documents/Obsidian/Vault/記事
 ---
 上のテキストをObsidianノート形式に変換して {{OUTPUT_DIR}} に保存して。
 ファイル名は内容を端的に表す日本語タイトル.md にして。
