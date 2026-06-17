@@ -1,18 +1,18 @@
 ---
 name: youtube-to-obsidian
-description: YouTube料理動画の文字起こしからObsidianレシピノートを生成するスキル。「レシピ化して」「文字起こしをレシピにして」「.transcriptsを処理して」「YouTubeのレシピを整理して」などで起動する。文字起こし済みテキストがない場合はローカル実行スクリプト（yt-dlp + mlx-whisper）のセットアップもガイドする。YouTube、レシピ、文字起こし、Obsidian、えのき、鶏肉、料理動画など食や動画に関連するキーワードが出たら積極的にこのスキルの利用を検討すること。
+description: YouTube動画やWeb記事をObsidianノートに自動変換するスキル。「レシピ化して」「文字起こしをレシピにして」「.transcriptsを処理して」「YouTubeのレシピを整理して」「この記事をノートにして」「X/Twitterの記事を要約して」などで起動する。文字起こし済みテキストがない場合はローカル実行スクリプト（yt-dlp + mlx-whisper）のセットアップもガイドする。YouTube、レシピ、文字起こし、Obsidian、料理動画、Web記事、X Article、ブログ記事、要約、ノート化などのキーワードが出たら積極的にこのスキルの利用を検討すること。
 ---
 
-# YouTube Recipe Transcriber
+# YouTube & Web Article to Obsidian
 
-YouTube料理動画の文字起こしテキストを読み取り、Obsidian Vaultのレシピ形式に変換して保存するスキル。
+YouTube動画の文字起こしやWeb記事のテキストを読み取り、Obsidian Vaultの構造化ノートに変換して保存するスキル。
 
 ## 全体の流れ
 
-1. **文字起こし**（Macローカルで実行）: `~/scripts/transcribe.py` でYouTube動画の音声をダウンロードし、mlx-whisperで文字起こし。結果は `.transcripts/` フォルダに保存される。
-2. **レシピ化**: `.transcripts/` 内のテキストファイルを読み、レシピ形式に変換してObsidianフォルダに保存。
+1. **テキスト取得**（Macローカルで実行）: `~/scripts/transcribe.py` でYouTube動画の字幕/音声を取得（mlx-whisper）、またはWeb記事のテキストを抽出（trafilatura → Playwrightフォールバック）。結果は `.transcripts/` フォルダに保存される。
+2. **ノート化**: `.transcripts/` 内のテキストファイルを読み、プロンプトに応じた形式に変換してObsidianフォルダに保存。
 
-レシピ化は以下のどちらでも実行できる:
+ノート化は以下のどちらでも実行できる:
 - **CLIから**: `~/scripts/youtube-to-obsidian` を実行（内部で `claude -p` を1件ずつ呼び出す）
 - **このスキル**: Coworkや対話セッション内で直接実行
 
@@ -46,7 +46,7 @@ ln -s ~/repos/youtube-to-obsidian/transcribe.py ~/scripts/transcribe.py
 chmod +x ~/scripts/youtube-to-obsidian
 ```
 
-文字起こしの実行:
+実行:
 
 ```bash
 # 再生リストをまとめて処理
@@ -55,15 +55,19 @@ chmod +x ~/scripts/youtube-to-obsidian
 # 単体の動画
 ~/scripts/youtube-to-obsidian https://www.youtube.com/watch?v=XXXXX
 
-# 文字起こしだけ（レシピ変換なし）
+# Web記事をノート化（X Article、ブログ記事など）
+~/scripts/youtube-to-obsidian -p article https://x.com/user/status/XXXXX
+
+# テキスト取得だけ（ノート変換なし）
 ~/scripts/.venv/bin/python3 ~/scripts/transcribe.py https://www.youtube.com/watch?v=XXXXX
+~/scripts/.venv/bin/python3 ~/scripts/transcribe.py https://x.com/user/status/XXXXX
 ```
 
-## レシピ化の手順
+## ノート化の手順
 
-### 1. 文字起こしファイルを読む
+### 1. テキストファイルを読む
 
-Obsidianレシピフォルダ内の `.transcripts/` ディレクトリにある `.txt` ファイルを読む。`done/` サブディレクトリ内のファイルは処理済みなので無視する。各ファイルの形式:
+出力先フォルダ内の `.transcripts/` ディレクトリにある `.txt` ファイルを読む。`done/` サブディレクトリ内のファイルは処理済みなので無視する。各ファイルの形式:
 
 ```
 title: 動画タイトル
@@ -134,7 +138,7 @@ Obsidianレシピフォルダに直接保存する:
 
 ### 6. 処理済みファイルの扱い
 
-レシピ化が完了した文字起こしファイルは `.transcripts/done/` に移動する。これにより次回実行時に重複処理を防ぐ。
+ノート化が完了したテキストファイルは `.transcripts/done/` に移動する。これにより次回実行時に重複処理を防ぐ。
 
 ## 既存レシピの例
 
