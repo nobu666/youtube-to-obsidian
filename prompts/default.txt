@@ -1,4 +1,4 @@
-output_dir: ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube
+output_dir: ~/Documents/Obsidian/Vault/YouTube
 ---
 上の文字起こしをObsidianノート形式に変換して {{OUTPUT_DIR}} に保存して。
 ファイル名は内容を端的に表すタイトル.md にして。

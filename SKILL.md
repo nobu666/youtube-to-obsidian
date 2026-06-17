@@ -23,7 +23,7 @@ YouTube料理動画の文字起こしテキストを読み取り、Obsidian Vaul
 スクリプト:  ~/scripts/youtube-to-obsidian  → シンボリックリンク
              ~/scripts/transcribe.py       → シンボリックリンク
 venv:        ~/scripts/.venv/
-Vault:       ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ/
+Vault:       ~/Documents/Obsidian/Vault/レシピ/
 文字起こし:  <vault>/.transcripts/*.txt     （未処理）
 処理済み:    <vault>/.transcripts/done/     （レシピ変換済み）
 ```
@@ -129,7 +129,7 @@ source: https://www.youtube.com/watch?v=VIDEO_ID
 Obsidianレシピフォルダに直接保存する:
 
 ```
-~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/レシピ/料理名.md
+~/Documents/Obsidian/Vault/レシピ/料理名.md
 ```
 
 ### 6. 処理済みファイルの扱い

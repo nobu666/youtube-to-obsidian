@@ -65,7 +65,7 @@ if [ -n "$OUTPUT_DIR_OVERRIDE" ]; then
 elif [ -n "$HEADER_OUTPUT_DIR" ]; then
   OUTPUT_DIR="$HEADER_OUTPUT_DIR"
 else
-  OUTPUT_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube"
+  OUTPUT_DIR="$HOME/Documents/Obsidian/Vault/YouTube"
 fi
 
 URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"

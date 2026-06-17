@@ -1,4 +1,4 @@
-output_dir: ~/Library/Mobile Documents/com~apple~CloudDocs/Obsidian/Vault/YouTube/トレーニング
+output_dir: ~/Documents/Obsidian/Vault/YouTube/トレーニング
 ---
 上の文字起こしをObsidianトレーニングメニュー形式に変換して {{OUTPUT_DIR}} に保存して。
 ファイル名はメニュー名.md にして。
