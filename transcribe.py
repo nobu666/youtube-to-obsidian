@@ -104,9 +104,61 @@ def is_hallucinated(text, threshold=0.4):
     return False
 
 
+def get_subtitles(video):
+    """YouTube字幕を取得（手動字幕 → 自動生成の順で試行）"""
+    for sub_args in [
+        ["--write-subs", "--sub-langs", "ja"],
+        ["--write-auto-subs", "--sub-langs", "ja"],
+    ]:
+        result = subprocess.run(
+            ["yt-dlp", "--skip-download", *sub_args,
+             "--convert-subs", "srt", "-o", "/tmp/yt_subs_%(id)s", video["url"]],
+            capture_output=True, text=True
+        )
+        srt_path = Path(f"/tmp/yt_subs_{video['id']}.ja.srt")
+        if srt_path.exists():
+            text = srt_path.read_text(encoding="utf-8")
+            srt_path.unlink()
+            lines = [l.strip() for l in text.splitlines()
+                     if l.strip() and not re.match(r"^\d+$", l.strip())
+                     and not re.match(r"\d{2}:\d{2}:\d{2}", l.strip())]
+            return " ".join(lines)
+    return None
+
+
+def get_description(video):
+    """YouTube説明欄を取得"""
+    result = subprocess.run(
+        ["yt-dlp", "--print", "description", video["url"]],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0 and len(result.stdout.strip()) >= 50:
+        return result.stdout.strip()
+    return None
+
+
+def save_transcript(video, text, source="whisper"):
+    """文字起こしテキストをファイルに保存"""
+    transcript_path = TRANSCRIPT_DIR / f"{video['id']}.txt"
+    header = f"title: {video['title']}\nvideo_id: {video['id']}\nurl: {video['url']}"
+    if source != "whisper":
+        header += f"\nsource: {source}"
+    content = f"{header}\n---\n{text}"
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=TRANSCRIPT_DIR, suffix=".tmp")
+    try:
+        with open(tmp_fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        Path(tmp_path).replace(transcript_path)
+    except Exception:
+        Path(tmp_path).unlink(missing_ok=True)
+        raise
+    return transcript_path
+
+
 def transcribe_audio(audio_path, video):
-    """Whisperで文字起こし"""
+    """Whisperで文字起こし（失敗時は字幕・説明欄にフォールバック）"""
     print(f"  文字起こし中...")
+    whisper_failed = False
     try:
         import mlx_whisper
         result = mlx_whisper.transcribe(
@@ -118,24 +170,28 @@ def transcribe_audio(audio_path, video):
         text = result["text"]
     except Exception as e:
         print(f"  文字起こしエラー: {e}")
-        return None
+        whisper_failed = True
 
-    if is_hallucinated(text):
-        print(f"  ハルシネーション検出（繰り返しパターン）。スキップします。")
-        return None
+    if not whisper_failed and not is_hallucinated(text):
+        return save_transcript(video, text)
 
-    transcript_path = TRANSCRIPT_DIR / f"{video['id']}.txt"
-    content = f"title: {video['title']}\nvideo_id: {video['id']}\nurl: {video['url']}\n---\n{text}"
-    tmp_fd, tmp_path = tempfile.mkstemp(dir=TRANSCRIPT_DIR, suffix=".tmp")
-    try:
-        with open(tmp_fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        Path(tmp_path).replace(transcript_path)
-    except Exception:
-        Path(tmp_path).unlink(missing_ok=True)
-        raise
+    if not whisper_failed:
+        print(f"  ハルシネーション検出。フォールバックを試行...")
 
-    return transcript_path
+    print(f"  字幕を確認中...")
+    sub_text = get_subtitles(video)
+    if sub_text:
+        print(f"  字幕から取得しました")
+        return save_transcript(video, sub_text, source="youtube-subtitles")
+
+    print(f"  説明欄を確認中...")
+    desc_text = get_description(video)
+    if desc_text:
+        print(f"  説明欄から取得しました")
+        return save_transcript(video, desc_text, source="youtube-description")
+
+    print(f"  フォールバックも失敗。スキップします。")
+    return None
 
 
 def is_processed(video_id):
