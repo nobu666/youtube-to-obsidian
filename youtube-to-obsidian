@@ -3,7 +3,7 @@
 # 使い方:
 #   youtube-to-obsidian                                    # デフォルトの再生リストを処理
 #   youtube-to-obsidian https://youtube.com/...            # 指定URLを処理
-#   youtube-to-obsidian -p prompt-lecture.txt <URL>        # プロンプトを指定
+#   youtube-to-obsidian -p recipe <URL>                    # プロンプトを指定（prompts/recipe.txt）
 
 # caffeinate で再帰呼び出し（スリープ防止）
 if [ -z "$CAFFEINATED" ]; then
@@ -11,22 +11,29 @@ if [ -z "$CAFFEINATED" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-PROMPT_FILE="${SCRIPT_DIR}/prompt.txt"
+PROMPTS_DIR="${SCRIPT_DIR}/prompts"
+PROMPT_FILE="${PROMPTS_DIR}/default.txt"
 
 while getopts "p:" opt; do
   case $opt in
     p)
       if [ -f "$OPTARG" ]; then
         PROMPT_FILE="$OPTARG"
-      elif [ -f "${SCRIPT_DIR}/${OPTARG}" ]; then
-        PROMPT_FILE="${SCRIPT_DIR}/${OPTARG}"
+      elif [ -f "${PROMPTS_DIR}/${OPTARG}" ]; then
+        PROMPT_FILE="${PROMPTS_DIR}/${OPTARG}"
+      elif [ -f "${PROMPTS_DIR}/${OPTARG}.txt" ]; then
+        PROMPT_FILE="${PROMPTS_DIR}/${OPTARG}.txt"
       else
         echo "エラー: プロンプトファイルが見つかりません: $OPTARG"
+        echo "利用可能なプロンプト:"
+        ls "${PROMPTS_DIR}"/*.txt 2>/dev/null | while read -r f; do
+          echo "  - $(basename "$f" .txt)"
+        done
         exit 1
       fi
       ;;
     *)
-      echo "使い方: youtube-to-obsidian [-p prompt_file] [URL]"
+      echo "使い方: youtube-to-obsidian [-p prompt] [URL]"
       exit 1
       ;;
   esac
