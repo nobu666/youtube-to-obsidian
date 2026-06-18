@@ -1,29 +1,33 @@
 ---
-name: youtube-to-obsidian
-description: YouTube動画やWeb記事をObsidianノートに自動変換するスキル。「レシピ化して」「文字起こしをレシピにして」「.transcriptsを処理して」「YouTubeのレシピを整理して」「この記事をノートにして」「X/Twitterの記事を要約して」などで起動する。文字起こし済みテキストがない場合はローカル実行スクリプト（yt-dlp + mlx-whisper）のセットアップもガイドする。YouTube、レシピ、文字起こし、Obsidian、料理動画、Web記事、X Article、ブログ記事、要約、ノート化などのキーワードが出たら積極的にこのスキルの利用を検討すること。
+name: obsidian-import
+description: YouTube動画・Web記事・ドキュメント（PDF/スライド等）をObsidianノートに自動変換するスキル。「レシピ化して」「文字起こしをレシピにして」「.transcriptsを処理して」「YouTubeのレシピを整理して」「この記事をノートにして」「X/Twitterの記事を要約して」「PDFを要約して」「スライドをノートにして」などで起動する。文字起こし済みテキストがない場合はローカル実行スクリプト（yt-dlp + mlx-whisper + markitdown）のセットアップもガイドする。YouTube、レシピ、文字起こし、Obsidian、料理動画、Web記事、X Article、ブログ記事、PDF、スライド、要約、ノート化などのキーワードが出たら積極的にこのスキルの利用を検討すること。
 ---
 
-# YouTube & Web Article to Obsidian
+# Obsidian Import
 
-YouTube動画の文字起こしやWeb記事のテキストを読み取り、Obsidian Vaultの構造化ノートに変換して保存するスキル。
+YouTube動画の文字起こし・Web記事のテキスト・ドキュメント（PDF/スライド等）を読み取り、Obsidian Vaultの構造化ノートに変換して保存するスキル。
 
 ## 全体の流れ
 
-1. **テキスト取得**（Macローカルで実行）: `~/scripts/transcribe.py` でYouTube動画の字幕/音声を取得（mlx-whisper）、またはWeb記事のテキストを抽出（trafilatura → Playwrightフォールバック）。結果は `.transcripts/` フォルダに保存される。
+1. **テキスト取得**（Macローカルで実行）:
+   - YouTube URL → `~/scripts/transcribe.py` で字幕/音声を取得（mlx-whisper）
+   - それ以外のURL・ファイル → `~/scripts/convert.py` で MarkItDown によりMarkdown化
+   - 結果は `.transcripts/` フォルダに保存される
 2. **ノート化**: `.transcripts/` 内のテキストファイルを読み、プロンプトに応じた形式に変換してObsidianフォルダに保存。
 
 ノート化は以下のどちらでも実行できる:
-- **CLIから**: `~/scripts/youtube-to-obsidian` を実行（内部で `claude -p` を1件ずつ呼び出す）
+- **CLIから**: `~/scripts/obsidian-import` を実行（内部で `claude -p` を1件ずつ呼び出す）
 - **このスキル**: Coworkや対話セッション内で直接実行
 
 ## パス情報
 
 ```
-リポジトリ:  ~/repos/youtube-to-obsidian/
-スクリプト:  ~/scripts/youtube-to-obsidian  → シンボリックリンク
-             ~/scripts/transcribe.py       → シンボリックリンク
+リポジトリ:  ~/repos/obsidian-import/
+スクリプト:  ~/scripts/obsidian-import    → シンボリックリンク
+             ~/scripts/transcribe.py     → シンボリックリンク
+             ~/scripts/convert.py        → シンボリックリンク
 venv:        ~/scripts/.venv/
-Vault:       ~/Documents/Obsidian/Vault/レシピ/
+Vault:       ~/Documents/Obsidian/Vault/YouTube/レシピ/
 文字起こし:  <vault>/.transcripts/*.txt     （未処理）
 処理済み:    <vault>/.transcripts/done/     （レシピ変換済み）
 ```
@@ -35,32 +39,37 @@ Vault:       ~/Documents/Obsidian/Vault/レシピ/
 ```bash
 brew install yt-dlp ffmpeg python@3.12
 
-# venv 作成と mlx-whisper インストール
+# venv 作成と依存インストール
 python3.12 -m venv ~/scripts/.venv
-~/scripts/.venv/bin/pip install mlx-whisper
+~/scripts/.venv/bin/pip install mlx-whisper markitdown
 
 # リポジトリのクローンとシンボリックリンク
-git clone https://github.com/nobu666/youtube-to-obsidian.git ~/repos/youtube-to-obsidian
-ln -s ~/repos/youtube-to-obsidian/youtube-to-obsidian ~/scripts/youtube-to-obsidian
-ln -s ~/repos/youtube-to-obsidian/transcribe.py ~/scripts/transcribe.py
-chmod +x ~/scripts/youtube-to-obsidian
+git clone https://github.com/nobu666/obsidian-import.git ~/repos/obsidian-import
+ln -s ~/repos/obsidian-import/obsidian-import ~/scripts/obsidian-import
+ln -s ~/repos/obsidian-import/transcribe.py ~/scripts/transcribe.py
+ln -s ~/repos/obsidian-import/convert.py ~/scripts/convert.py
+chmod +x ~/scripts/obsidian-import
 ```
 
 実行:
 
 ```bash
 # 再生リストをまとめて処理
-~/scripts/youtube-to-obsidian https://www.youtube.com/playlist?list=XXXXX
+~/scripts/obsidian-import https://www.youtube.com/playlist?list=XXXXX
 
 # 単体の動画
-~/scripts/youtube-to-obsidian https://www.youtube.com/watch?v=XXXXX
+~/scripts/obsidian-import https://www.youtube.com/watch?v=XXXXX
 
-# Web記事をノート化（X Article、ブログ記事など）
-~/scripts/youtube-to-obsidian -p article https://x.com/user/status/XXXXX
+# Web記事をノート化
+~/scripts/obsidian-import https://x.com/user/status/XXXXX
+
+# ドキュメント（PDF/スライド/Google Docs等）
+~/scripts/obsidian-import https://docs.google.com/document/d/XXXXX
+~/scripts/obsidian-import ~/Downloads/slides.pdf
 
 # テキスト取得だけ（ノート変換なし）
 ~/scripts/.venv/bin/python3 ~/scripts/transcribe.py https://www.youtube.com/watch?v=XXXXX
-~/scripts/.venv/bin/python3 ~/scripts/transcribe.py https://x.com/user/status/XXXXX
+~/scripts/.venv/bin/python3 ~/scripts/convert.py https://example.com/paper.pdf
 ```
 
 ## ノート化の手順
@@ -133,7 +142,7 @@ source: https://www.youtube.com/watch?v=VIDEO_ID
 Obsidianレシピフォルダに直接保存する:
 
 ```
-~/Documents/Obsidian/Vault/レシピ/料理名.md
+~/Documents/Obsidian/Vault/YouTube/レシピ/料理名.md
 ```
 
 ### 6. 処理済みファイルの扱い

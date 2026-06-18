@@ -3,7 +3,7 @@
 YouTube動画の音声をダウンロードし、Whisperで文字起こしする。
 Web記事のテキスト抽出にも対応。
 結果はObsidian Vault内の .transcripts/ に保存される。
-構造化ノートへの変換は youtube-to-obsidian スクリプト経由で Claude CLI が担当する。
+構造化ノートへの変換は obsidian-import スクリプト経由で Claude CLI が担当する。
 """
 
 import argparse

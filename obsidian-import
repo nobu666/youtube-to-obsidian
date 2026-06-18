@@ -13,7 +13,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 PROMPTS_DIR="${SCRIPT_DIR}/prompts"
-PROMPT_FILE="${PROMPTS_DIR}/default.txt"
+PROMPT_FILE=""
 OUTPUT_DIR_OVERRIDE=""
 
 while getopts "p:o:" opt; do
@@ -43,6 +43,17 @@ while getopts "p:o:" opt; do
 done
 shift $((OPTIND - 1))
 
+INPUT="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
+
+# -p 未指定時: YouTubeならdefault、それ以外はarticle
+if [ -z "$PROMPT_FILE" ]; then
+  if [[ "$INPUT" =~ ^https?://(www\.)?(youtube\.com|youtu\.be)/ ]]; then
+    PROMPT_FILE="${PROMPTS_DIR}/default.txt"
+  else
+    PROMPT_FILE="${PROMPTS_DIR}/article.txt"
+  fi
+fi
+
 if [ ! -f "$PROMPT_FILE" ]; then
   echo "エラー: プロンプトファイルが見つかりません: $PROMPT_FILE"
   exit 1
@@ -68,17 +79,31 @@ else
   OUTPUT_DIR="$HOME/Documents/Obsidian/Vault/YouTube"
 fi
 
-URL="${1:-https://www.youtube.com/playlist?list=PLh4huXs8Qi9HkMIXptPbw2gIYUDNtqNic}"
-SCRIPT="$HOME/scripts/transcribe.py"
+TRANSCRIBE_SCRIPT="$HOME/scripts/transcribe.py"
+CONVERT_SCRIPT="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)/convert.py"
 TRANSCRIPT_DIR="${OUTPUT_DIR}/.transcripts"
 
 mkdir -p "$OUTPUT_DIR"
 
-echo "=== Step 1/2: 文字起こし ==="
+# YouTube URLかどうかを判定
+is_youtube() {
+  [[ "$1" =~ ^https?://(www\.)?(youtube\.com|youtu\.be)/ ]]
+}
+
+echo "=== Step 1/2: テキスト抽出 ==="
 echo "出力先: ${OUTPUT_DIR}"
-if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$SCRIPT" -o "$OUTPUT_DIR" "$URL"; then
-  echo "文字起こしでエラーが発生しました（一部失敗の可能性あり）。"
-  echo "成功分のノート変換を続行します..."
+if is_youtube "$INPUT"; then
+  echo "モード: YouTube文字起こし"
+  if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$TRANSCRIBE_SCRIPT" -o "$OUTPUT_DIR" "$INPUT"; then
+    echo "文字起こしでエラーが発生しました（一部失敗の可能性あり）。"
+    echo "成功分のノート変換を続行します..."
+  fi
+else
+  echo "モード: ドキュメント変換（MarkItDown）"
+  if ! nice -n 10 "$HOME/scripts/.venv/bin/python3" "$CONVERT_SCRIPT" -o "$OUTPUT_DIR" "$INPUT"; then
+    echo "ドキュメント変換でエラーが発生しました。"
+    echo "成功分のノート変換を続行します..."
+  fi
 fi
 
 echo ""
