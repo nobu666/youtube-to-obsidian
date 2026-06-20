@@ -144,27 +144,49 @@ $(cat "$TXT")
   # ツールなしで実行し、テキスト出力からファイル名と本文を抽出
   OUTPUT=$(echo "$FULL_PROMPT" | nice -n 10 claude -p 2>&1)
 
-  # 出力から FILENAME: 行を抽出し、本文を分離
-  OUT_FILENAME=$(echo "$OUTPUT" | grep -m1 '^FILENAME: ' | sed 's/^FILENAME: //' | sed 's/^`//;s/`$//')
-  if [ -n "$OUT_FILENAME" ]; then
-    # ファイル名のバリデーション: .md拡張子 + パス区切りなし + 安全な文字のみ
-    if [[ "$OUT_FILENAME" == *.md ]] && [[ "$OUT_FILENAME" != */* ]] && [[ "$OUT_FILENAME" != *..* ]]; then
-      # FILENAME行以降を抽出し、FILENAME行自体を除去
-      echo "$OUTPUT" | sed -n '/^FILENAME: /,$p' | tail -n +2 > "${OUTPUT_DIR}/${OUT_FILENAME}"
-      WROTE_FILE=true
-    else
-      echo "  ⚠ 不正なファイル名を検出: ${OUT_FILENAME}"
-      WROTE_FILE=false
+  # 出力から FILENAME: ブロックを抽出（複数ファイル対応）
+  WROTE_FILE=false
+  FILE_COUNT=0
+  CURRENT_FILE=""
+  while IFS= read -r LINE; do
+    if [[ "$LINE" =~ ^FILENAME:\ (.+) ]]; then
+      # 前のファイルがあれば書き出し
+      if [ -n "$CURRENT_FILE" ]; then
+        echo "$CURRENT_CONTENT" > "${OUTPUT_DIR}/${CURRENT_FILE}"
+        FILE_COUNT=$((FILE_COUNT + 1))
+      fi
+      # 新しいファイル名を取得しバリデーション
+      CURRENT_FILE=$(echo "${BASH_REMATCH[1]}" | sed 's/^`//;s/`$//')
+      CURRENT_CONTENT=""
+      if [[ "$CURRENT_FILE" != *.md ]] || [[ "$CURRENT_FILE" == */* ]] || [[ "$CURRENT_FILE" == *..* ]]; then
+        echo "  ⚠ 不正なファイル名を検出: ${CURRENT_FILE}"
+        CURRENT_FILE=""
+      fi
+    elif [ -n "$CURRENT_FILE" ]; then
+      if [ -z "$CURRENT_CONTENT" ]; then
+        CURRENT_CONTENT="$LINE"
+      else
+        CURRENT_CONTENT="${CURRENT_CONTENT}
+${LINE}"
+      fi
     fi
-  else
-    WROTE_FILE=false
+  done <<< "$OUTPUT"
+  # 最後のファイルを書き出し
+  if [ -n "$CURRENT_FILE" ]; then
+    echo "$CURRENT_CONTENT" > "${OUTPUT_DIR}/${CURRENT_FILE}"
+    FILE_COUNT=$((FILE_COUNT + 1))
   fi
+  [ "$FILE_COUNT" -gt 0 ] && WROTE_FILE=true
 
   if [ "$WROTE_FILE" = true ]; then
     mv "$TXT" "$DONE_DIR/"
     DONE=$((DONE + 1))
     RESULTS+=("✓ ${TITLE}|${OUTPUT}")
-    echo "  → 完了"
+    if [ "$FILE_COUNT" -gt 1 ]; then
+      echo "  → 完了（${FILE_COUNT}ファイル）"
+    else
+      echo "  → 完了"
+    fi
   else
     FAIL=$((FAIL + 1))
     FAILED_FILES+=("$TXT")

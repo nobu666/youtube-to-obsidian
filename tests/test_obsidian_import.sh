@@ -87,6 +87,78 @@ assert_eq "本文が含まれる" \
   "# 本文" \
   "$(echo "$CONTENT" | tail -1)"
 
+# --- 複数FILENAMEブロック抽出テスト ---
+echo ""
+echo "=== 複数FILENAMEブロック抽出 ==="
+
+# シェルスクリプト本体と同じパースロジックを関数化
+parse_multi_filename() {
+  local output="$1"
+  local output_dir="$2"
+  local file_count=0
+  local current_file=""
+  local current_content=""
+  while IFS= read -r LINE; do
+    if [[ "$LINE" =~ ^FILENAME:\ (.+) ]]; then
+      if [ -n "$current_file" ]; then
+        echo "$current_content" > "${output_dir}/${current_file}"
+        file_count=$((file_count + 1))
+      fi
+      current_file=$(echo "${BASH_REMATCH[1]}" | sed 's/^`//;s/`$//')
+      current_content=""
+      if [[ "$current_file" != *.md ]] || [[ "$current_file" == */* ]] || [[ "$current_file" == *..* ]]; then
+        current_file=""
+      fi
+    elif [ -n "$current_file" ]; then
+      if [ -z "$current_content" ]; then
+        current_content="$LINE"
+      else
+        current_content="${current_content}
+${LINE}"
+      fi
+    fi
+  done <<< "$output"
+  if [ -n "$current_file" ]; then
+    echo "$current_content" > "${output_dir}/${current_file}"
+    file_count=$((file_count + 1))
+  fi
+  echo "$file_count"
+}
+
+TMPDIR_TEST=$(mktemp -d)
+
+# テスト: 単一ファイル
+SINGLE_OUTPUT="$(printf 'コメント\nFILENAME: 料理A.md\n---\n# 料理A\n* 材料1')"
+COUNT=$(parse_multi_filename "$SINGLE_OUTPUT" "$TMPDIR_TEST")
+assert_eq "単一ファイル: 件数" "1" "$COUNT"
+assert_eq "単一ファイル: ファイル存在" "true" "$([ -f "$TMPDIR_TEST/料理A.md" ] && echo true || echo false)"
+assert_eq "単一ファイル: 本文含む" "# 料理A" "$(grep '# 料理A' "$TMPDIR_TEST/料理A.md")"
+rm -f "$TMPDIR_TEST"/*.md
+
+# テスト: 複数ファイル
+MULTI_OUTPUT="$(printf 'FILENAME: カレー.md\n---\n# カレー\n* 玉ねぎ\n1. 炒める\nFILENAME: サラダ.md\n---\n# サラダ\n* レタス\n1. 盛る')"
+COUNT=$(parse_multi_filename "$MULTI_OUTPUT" "$TMPDIR_TEST")
+assert_eq "複数ファイル: 件数" "2" "$COUNT"
+assert_eq "複数ファイル: カレー存在" "true" "$([ -f "$TMPDIR_TEST/カレー.md" ] && echo true || echo false)"
+assert_eq "複数ファイル: サラダ存在" "true" "$([ -f "$TMPDIR_TEST/サラダ.md" ] && echo true || echo false)"
+assert_eq "複数ファイル: カレーの内容にサラダが混入しない" "" "$(grep 'サラダ' "$TMPDIR_TEST/カレー.md" 2>/dev/null)"
+assert_eq "複数ファイル: サラダの内容" "# サラダ" "$(grep '# サラダ' "$TMPDIR_TEST/サラダ.md")"
+rm -f "$TMPDIR_TEST"/*.md
+
+# テスト: 不正なファイル名を含む複数ブロック
+MIXED_OUTPUT="$(printf 'FILENAME: 正常.md\n# OK\nFILENAME: ../../evil.md\n# NG\nFILENAME: 正常2.md\n# OK2')"
+COUNT=$(parse_multi_filename "$MIXED_OUTPUT" "$TMPDIR_TEST")
+assert_eq "不正ファイル名混在: 有効ファイル数" "2" "$COUNT"
+assert_eq "不正ファイル名混在: evil.md は作られない" "false" "$([ -f "$TMPDIR_TEST/../../evil.md" ] && echo true || echo false)"
+rm -f "$TMPDIR_TEST"/*.md
+
+# テスト: FILENAME行がない出力
+NO_FN_OUTPUT="ただのテキスト出力です"
+COUNT=$(parse_multi_filename "$NO_FN_OUTPUT" "$TMPDIR_TEST")
+assert_eq "FILENAME行なし: 件数0" "0" "$COUNT"
+
+rm -rf "$TMPDIR_TEST"
+
 # --- 結果 ---
 echo ""
 echo "=== 結果: ${PASS} passed / ${FAIL} failed ==="
