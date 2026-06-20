@@ -163,6 +163,8 @@ $(cat "$TXT")
         CURRENT_FILE=""
       fi
     elif [ -n "$CURRENT_FILE" ]; then
+      # Claudeがマークダウンコードブロックで囲む場合があるので除去
+      [[ "$LINE" =~ ^'```' ]] && continue
       if [ -z "$CURRENT_CONTENT" ]; then
         CURRENT_CONTENT="$LINE"
       else
