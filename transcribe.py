@@ -51,6 +51,26 @@ def url_to_id(url):
     return hashlib.sha256(url.encode()).hexdigest()[:12]
 
 
+# yt-dlp の出力（外部入力）由来の動画IDをパスに使う前に検証する。
+# 不正なID（`../` 等）によるパストラバーサル書き込みを防ぐ。
+# fullmatch + アンカーなしで、末尾改行（`abc\n`）も確実に弾く。
+VIDEO_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+
+def _is_safe_id(vid):
+    return bool(vid) and VIDEO_ID_RE.fullmatch(vid) is not None
+
+
+def _is_x_host(host):
+    """x.com / twitter.com とそのサブドメインか（部分一致による誤判定を避ける）"""
+    return host in ("x.com", "twitter.com") or host.endswith((".x.com", ".twitter.com"))
+
+
+def _hdr_val(v):
+    """ヘッダ値の改行を除去し、本文との `---` 境界やキーの偽装注入を防ぐ"""
+    return str(v).replace("\r", " ").replace("\n", " ")
+
+
 def setup_dirs():
     TRANSCRIPT_DIR.mkdir(parents=True, exist_ok=True)
     AUDIO_TMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -60,7 +80,7 @@ def get_videos(url):
     """URLから動画情報を取得（再生リストでも単体でもOK）"""
     print("動画情報を取得中...")
     result = subprocess.run(
-        ["yt-dlp", "--flat-playlist", "-J", url],
+        ["yt-dlp", "--flat-playlist", "-J", "--", url],
         capture_output=True, text=True
     )
     if result.returncode != 0:
@@ -71,8 +91,12 @@ def get_videos(url):
 
     # 単体動画の場合
     if "entries" not in data:
+        vid = data.get("id", "")
+        if not _is_safe_id(vid):
+            print(f"エラー: 不正な動画IDを検出: {vid!r}")
+            sys.exit(1)
         return [{
-            "id": data.get("id", "unknown"),
+            "id": vid,
             "title": data.get("title", "unknown"),
             "url": url
         }]
@@ -80,10 +104,14 @@ def get_videos(url):
     # 再生リストの場合
     videos = []
     for entry in data.get("entries", []):
+        vid = entry.get("id", "")
+        if not _is_safe_id(vid):
+            print(f"  不正な動画IDをスキップ: {vid!r}")
+            continue
         videos.append({
-            "id": entry["id"],
+            "id": vid,
             "title": entry.get("title", "unknown"),
-            "url": f"https://www.youtube.com/watch?v={entry['id']}"
+            "url": f"https://www.youtube.com/watch?v={vid}"
         })
     return videos
 
@@ -98,7 +126,7 @@ def download_audio(video):
     print(f"  音声ダウンロード中...")
     result = subprocess.run(
         ["yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "5",
-         "-o", str(output_path), video["url"]],
+         "-o", str(output_path), "--", video["url"]],
         capture_output=True, text=True
     )
     if result.returncode != 0:
@@ -132,7 +160,7 @@ def get_subtitles(video):
     ]:
         result = subprocess.run(
             ["yt-dlp", "--skip-download", *sub_args,
-             "--convert-subs", "srt", "-o", "/tmp/yt_subs_%(id)s", video["url"]],
+             "--convert-subs", "srt", "-o", "/tmp/yt_subs_%(id)s", "--", video["url"]],
             capture_output=True, text=True
         )
         srt_path = Path(f"/tmp/yt_subs_{video['id']}.{lang}.srt")
@@ -150,7 +178,7 @@ def get_subtitles(video):
 def get_description(video):
     """YouTube説明欄を取得"""
     result = subprocess.run(
-        ["yt-dlp", "--print", "description", video["url"]],
+        ["yt-dlp", "--print", "description", "--", video["url"]],
         capture_output=True, text=True
     )
     if result.returncode == 0 and len(result.stdout.strip()) >= 50:
@@ -161,9 +189,11 @@ def get_description(video):
 def save_transcript(video, text, source="whisper"):
     """文字起こしテキストをファイルに保存"""
     transcript_path = TRANSCRIPT_DIR / f"{video['id']}.txt"
-    header = f"title: {video['title']}\nvideo_id: {video['id']}\nurl: {video['url']}"
+    header = (f"title: {_hdr_val(video['title'])}\n"
+              f"video_id: {_hdr_val(video['id'])}\n"
+              f"url: {_hdr_val(video['url'])}")
     if source != "whisper":
-        header += f"\nsource: {source}"
+        header += f"\nsource: {_hdr_val(source)}"
     content = f"{header}\n---\n{text}"
     tmp_fd, tmp_path = tempfile.mkstemp(dir=TRANSCRIPT_DIR, suffix=".tmp")
     try:
@@ -247,9 +277,9 @@ def _get_browser_cookies(url):
     if host.startswith("www."):
         domains.append(f".{host[4:]}")
     # x.com / twitter.com の相互対応
-    if "x.com" in host:
+    if host == "x.com" or host.endswith(".x.com"):
         domains.append(".twitter.com")
-    elif "twitter.com" in host:
+    elif host == "twitter.com" or host.endswith(".twitter.com"):
         domains.append(".x.com")
     try:
         raw = rookiepy.chrome(domains)
@@ -265,7 +295,7 @@ def _get_browser_cookies(url):
 def resolve_article_url(url):
     """X のツイートが Article へのリンクを含む場合、Article URL を返す"""
     host = urlparse(url).hostname or ""
-    if "x.com" not in host and "twitter.com" not in host:
+    if not _is_x_host(host):
         return url
     if "/article/" in url:
         return url

@@ -139,6 +139,18 @@ ${excerpt}" | claude -p 2>&1 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
   esac
 }
 
+# ノートを書き出す。出力先がシンボリックリンクの場合はリンク先（例: ~/.zshrc）の
+# 汚染を防ぐため拒否する。printf を使い echo の -n/-e フラグ解釈も避ける。
+write_note() {
+  local dir="$1" name="$2" content="$3"
+  local dest="${dir}/${name}"
+  if [ -L "$dest" ]; then
+    echo "  ⚠ シンボリックリンクへの書き込みを拒否: ${name}"
+    return 1
+  fi
+  printf '%s\n' "$content" > "$dest"
+}
+
 echo "=== Step 1/2: テキスト抽出 ==="
 echo "出力先: ${OUTPUT_DIR}"
 if is_youtube "$INPUT" || is_audio_file "$INPUT"; then
@@ -236,8 +248,7 @@ $(cat "$TXT")
     if [[ "$LINE" =~ ^FILENAME:\ (.+) ]]; then
       # 前のファイルがあれば書き出し
       if [ -n "$CURRENT_FILE" ]; then
-        echo "$CURRENT_CONTENT" > "${CURRENT_OUTPUT_DIR}/${CURRENT_FILE}"
-        FILE_COUNT=$((FILE_COUNT + 1))
+        write_note "$CURRENT_OUTPUT_DIR" "$CURRENT_FILE" "$CURRENT_CONTENT" && FILE_COUNT=$((FILE_COUNT + 1))
       fi
       # 新しいファイル名を取得しバリデーション
       CURRENT_FILE=$(echo "${BASH_REMATCH[1]}" | sed 's/^`//;s/`$//')
@@ -259,8 +270,7 @@ ${LINE}"
   done <<< "$OUTPUT"
   # 最後のファイルを書き出し
   if [ -n "$CURRENT_FILE" ]; then
-    echo "$CURRENT_CONTENT" > "${CURRENT_OUTPUT_DIR}/${CURRENT_FILE}"
-    FILE_COUNT=$((FILE_COUNT + 1))
+    write_note "$CURRENT_OUTPUT_DIR" "$CURRENT_FILE" "$CURRENT_CONTENT" && FILE_COUNT=$((FILE_COUNT + 1))
   fi
   [ "$FILE_COUNT" -gt 0 ] && WROTE_FILE=true
 

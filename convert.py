@@ -34,6 +34,11 @@ def source_id(source):
     return hashlib.md5(source.encode()).hexdigest()[:12]
 
 
+def _hdr_val(v):
+    """ヘッダ値の改行を除去し、本文との `---` 境界やキーの偽装注入を防ぐ"""
+    return str(v).replace("\r", " ").replace("\n", " ")
+
+
 def is_url(s):
     parsed = urlparse(s)
     return parsed.scheme in ("http", "https")
@@ -76,10 +81,10 @@ def convert(source, output_dir):
 
     if is_url(source):
         title = title_from_url(source)
-        header = f"title: {title}\nurl: {source}\nsource: markitdown-url"
+        header = f"title: {_hdr_val(title)}\nurl: {_hdr_val(source)}\nsource: markitdown-url"
     else:
         file_path = Path(source).resolve()
-        header = f"title: {file_path.name}\nurl: file://{file_path}\nsource: markitdown-file"
+        header = f"title: {_hdr_val(file_path.name)}\nurl: file://{_hdr_val(str(file_path))}\nsource: markitdown-file"
 
     content = f"{header}\n---\n{text}"
 

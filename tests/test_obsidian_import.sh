@@ -90,6 +90,33 @@ is_audio_file "https://youtu.be/abc" && r=yes || r=no
 assert_eq "URL → no" "no" "$r"
 rm -rf "$_AUDIO_TMP"
 
+# --- シンボリックリンク書き込み拒否テスト ---
+echo ""
+echo "=== シンボリックリンク書き込み拒否 ==="
+
+write_note() {
+  local dir="$1" name="$2" content="$3"
+  local dest="${dir}/${name}"
+  if [ -L "$dest" ]; then
+    echo "  ⚠ シンボリックリンクへの書き込みを拒否: ${name}"
+    return 1
+  fi
+  printf '%s\n' "$content" > "$dest"
+}
+
+_WN_TMP=$(mktemp -d)
+_WN_SECRET="$_WN_TMP/secret.txt"
+printf 'ORIGINAL\n' > "$_WN_SECRET"
+ln -s "$_WN_SECRET" "$_WN_TMP/evil.md"          # 出力先に .md 名のシンボリックリンク
+write_note "$_WN_TMP" "evil.md" "PWNED" && r=wrote || r=refused
+assert_eq "symlink宛ては拒否(戻り値)" "refused" "$r"
+assert_eq "symlinkリンク先は改変されない" "ORIGINAL" "$(cat "$_WN_SECRET")"
+# 通常ファイルは書ける
+write_note "$_WN_TMP" "normal.md" "HELLO" && r=wrote || r=refused
+assert_eq "通常ファイルは書ける(戻り値)" "wrote" "$r"
+assert_eq "通常ファイルの内容" "HELLO" "$(cat "$_WN_TMP/normal.md")"
+rm -rf "$_WN_TMP"
+
 # --- 本文抽出テスト ---
 echo ""
 echo "=== 本文抽出 ==="

@@ -295,6 +295,76 @@ class TestTranscribeLocalFile:
         assert result is None
 
 
+class TestSafeId:
+    def test_valid_youtube_id(self):
+        assert transcribe._is_safe_id("dQw4w9WgXcQ") is True
+
+    def test_underscore_dash(self):
+        assert transcribe._is_safe_id("a_b-c123") is True
+
+    def test_traversal_rejected(self):
+        assert transcribe._is_safe_id("../../etc/passwd") is False
+
+    def test_slash_rejected(self):
+        assert transcribe._is_safe_id("a/b") is False
+
+    def test_empty_rejected(self):
+        assert transcribe._is_safe_id("") is False
+        assert transcribe._is_safe_id(None) is False
+
+    def test_trailing_newline_rejected(self):
+        # 正規表現の `$` だと許してしまう末尾改行を fullmatch で弾く
+        assert transcribe._is_safe_id("abc\n") is False
+        assert transcribe._is_safe_id("abc\n../evil") is False
+
+
+class TestIsXHost:
+    def test_exact(self):
+        assert transcribe._is_x_host("x.com") is True
+        assert transcribe._is_x_host("twitter.com") is True
+
+    def test_subdomain(self):
+        assert transcribe._is_x_host("mobile.twitter.com") is True
+
+    def test_lookalike_rejected(self):
+        # 部分一致なら通ってしまう攻撃者ドメインを弾く
+        assert transcribe._is_x_host("x.com.evil.io") is False
+        assert transcribe._is_x_host("notx.com") is False
+
+
+class TestGetVideosIdValidation:
+    def test_single_malicious_id_exits(self, monkeypatch):
+        data = {"id": "../../tmp/evil", "title": "x"}
+        monkeypatch.setattr(
+            subprocess, "run",
+            lambda *a, **kw: _make_run_result(json.dumps(data)),
+        )
+        with pytest.raises(SystemExit):
+            transcribe.get_videos("https://www.youtube.com/watch?v=x")
+
+    def test_playlist_skips_bad_id(self, monkeypatch):
+        data = {"entries": [{"id": "../evil"}, {"id": "goodVideoID1"}]}
+        monkeypatch.setattr(
+            subprocess, "run",
+            lambda *a, **kw: _make_run_result(json.dumps(data)),
+        )
+        videos = transcribe.get_videos("https://www.youtube.com/playlist?list=x")
+        assert [v["id"] for v in videos] == ["goodVideoID1"]
+
+
+class TestHeaderSanitization:
+    def test_newline_in_title_does_not_inject_header(self):
+        video = {"id": "h1", "title": "evil\n---\ninjected: pwned", "url": "https://e.com"}
+        result = transcribe.save_transcript(video, "本文テキスト")
+        content = result.read_text()
+        header, body = content.split("\n---\n", 1)
+        # title の改行はスペース化され、ヘッダに偽の境界/キー行が入らない
+        assert "\ninjected: pwned" not in content
+        assert body == "本文テキスト"
+        # title 値は1行に収まっている
+        assert header.split("\n")[0] == "title: evil --- injected: pwned"
+
+
 class TestTranscribeVideo:
     def _mock_mlx_whisper(self, monkeypatch, text="今日は鶏肉を使った料理を紹介します。材料は鶏もも肉二枚と塩コショウです。まず鶏肉を一口大に切ってフライパンで焼いていきます。"):
         mock_module = types.ModuleType("mlx_whisper")
