@@ -1,10 +1,10 @@
 #!/bin/bash
 # YouTube動画をObsidianノートに自動変換
 # 使い方:
-#   youtube-to-obsidian                                    # デフォルトの再生リストを処理
-#   youtube-to-obsidian https://youtube.com/...            # 指定URLを処理
-#   youtube-to-obsidian -p recipe <URL>                    # プロンプトを指定（prompts/recipe.txt）
-#   youtube-to-obsidian -p recipe -o ~/notes <URL>        # 出力先を上書き
+#   obsidian-import                                    # デフォルトの再生リストを処理
+#   obsidian-import https://youtube.com/...            # 指定URLを処理
+#   obsidian-import -p recipe <URL>                    # プロンプトを指定（prompts/recipe.txt）
+#   obsidian-import -p recipe -o ~/notes <URL>        # 出力先を上書き
 
 # caffeinate で再帰呼び出し（スリープ防止）
 if [ -z "$CAFFEINATED" ]; then
@@ -39,7 +39,7 @@ while getopts "p:o:" opt; do
       ;;
     o) OUTPUT_DIR_OVERRIDE="$OPTARG" ;;
     *)
-      echo "使い方: youtube-to-obsidian [-p prompt] [-o output_dir] [URL]"
+      echo "使い方: obsidian-import [-p prompt] [-o output_dir] [URL]"
       exit 1
       ;;
   esac
@@ -344,9 +344,9 @@ if [ ${#FAILED_FILES[@]} -gt 0 ]; then
   echo ""
   echo "対応方法:"
   echo "  1. そのまま再実行（失敗分だけリトライされる）:"
-  echo "     ~/scripts/youtube-to-obsidian"
+  echo "     ~/scripts/obsidian-import"
   echo "  2. テキスト取得からやり直す:"
   echo "     rm \"${TRANSCRIPT_DIR}/<id>.txt\""
-  echo "     ~/scripts/youtube-to-obsidian \"<URL>\""
+  echo "     ~/scripts/obsidian-import \"<URL>\""
   echo "  3. 元のコンテンツを見てObsidianに手動で書く"
 fi
