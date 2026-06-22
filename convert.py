@@ -18,6 +18,10 @@ from urllib.parse import urlparse
 
 from markitdown import MarkItDown
 
+# symlink 経由（~/scripts/）で起動されても url_guard を解決できるよう実体dirを通す
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from url_guard import UnsafeURLError, assert_safe_url
+
 DEFAULT_OUTPUT_DIR = Path.home() / "Documents/Obsidian/Vault/YouTube"
 
 SUPPORTED_EXTENSIONS = {
@@ -66,6 +70,13 @@ def convert(source, output_dir):
     if transcript_path.exists() or (done_dir / f"{fid}.txt").exists():
         print(f"  スキップ（処理済み）")
         return None
+
+    if is_url(source):
+        try:
+            assert_safe_url(source)
+        except UnsafeURLError as e:
+            print(f"  アクセスをブロックしました: {e}")
+            return False
 
     md = MarkItDown()
     try:

@@ -18,6 +18,10 @@ import warnings
 from pathlib import Path
 from urllib.parse import urlparse
 
+# symlink 経由（~/scripts/）で起動されても url_guard を解決できるよう実体dirを通す
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from url_guard import UnsafeURLError, assert_safe_url, safe_head
+
 os.environ["MALLOC_STACK_LOGGING"] = ""
 warnings.filterwarnings("ignore", message=".*unauthenticated.*HF Hub.*")
 
@@ -220,6 +224,11 @@ def _is_js_wall(text):
 def fetch_with_trafilatura(url):
     """trafilaturaでテキスト抽出を試みる。失敗時はNone"""
     try:
+        assert_safe_url(url)
+    except UnsafeURLError as e:
+        print(f"  アクセスをブロックしました: {e}")
+        return None, None
+    try:
         import trafilatura
     except ImportError:
         return None, None
@@ -236,6 +245,11 @@ def fetch_with_trafilatura(url):
 
 def fetch_with_playwright(url):
     """Playwrightでヘッドレスブラウザ経由のテキスト抽出（JS必須サイト用）"""
+    try:
+        assert_safe_url(url)
+    except UnsafeURLError as e:
+        print(f"  アクセスをブロックしました: {e}")
+        return None, None
     try:
         from playwright.sync_api import sync_playwright
         import trafilatura
@@ -307,8 +321,7 @@ def resolve_article_url(url):
         import re as _re
         match = _re.search(r'https://t\.co/[A-Za-z0-9]+', html)
         if match:
-            import requests
-            resp = requests.head(match.group(), allow_redirects=True, timeout=10)
+            resp = safe_head(match.group())
             resolved = resp.url
             if "/article/" in resolved or "/i/article/" in resolved:
                 print(f"  Article URL検出: {resolved}")
@@ -323,6 +336,12 @@ def fetch_article(url):
     article_id = url_to_id(url)
     if is_processed(article_id):
         print(f"  スキップ（処理済み）")
+        return None
+
+    try:
+        assert_safe_url(url)
+    except UnsafeURLError as e:
+        print(f"  アクセスをブロックしました: {e}")
         return None
 
     print(f"  記事を取得中...")
