@@ -29,7 +29,10 @@ warnings.filterwarnings("ignore", message=".*unauthenticated.*HF Hub.*")
 DEFAULT_OUTPUT_DIR = Path.home() / "Documents/Obsidian/Vault/YouTube"
 OBSIDIAN_OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 TRANSCRIPT_DIR = OBSIDIAN_OUTPUT_DIR / ".transcripts"
-AUDIO_TMP_DIR = Path("/tmp/yt_obsidian_audio")
+# 予測可能な /tmp 固定パスは共有マシンで symlink 先取りの余地があるため、
+# プロセスごとのユーザー専用一時dir(mode 0700)を使う。
+AUDIO_TMP_DIR = Path(tempfile.mkdtemp(prefix="yt_obsidian_audio_"))
+SUBS_TMP_DIR = Path(tempfile.mkdtemp(prefix="yt_subs_"))
 WHISPER_MODEL = "mlx-community/whisper-large-v3-turbo"
 DONE_DIR = TRANSCRIPT_DIR / "done"
 
@@ -164,10 +167,10 @@ def get_subtitles(video):
     ]:
         result = subprocess.run(
             ["yt-dlp", "--skip-download", *sub_args,
-             "--convert-subs", "srt", "-o", "/tmp/yt_subs_%(id)s", "--", video["url"]],
+             "--convert-subs", "srt", "-o", str(SUBS_TMP_DIR / "%(id)s"), "--", video["url"]],
             capture_output=True, text=True
         )
-        srt_path = Path(f"/tmp/yt_subs_{video['id']}.{lang}.srt")
+        srt_path = SUBS_TMP_DIR / f"{video['id']}.{lang}.srt"
         if srt_path.exists():
             text = srt_path.read_text(encoding="utf-8")
             srt_path.unlink()

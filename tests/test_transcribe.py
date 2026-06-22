@@ -19,12 +19,15 @@ def override_dirs(tmp_path, monkeypatch):
     done_dir.mkdir()
     audio_dir = tmp_path / "audio"
     audio_dir.mkdir()
+    subs_dir = tmp_path / "subs"
+    subs_dir.mkdir()
 
     monkeypatch.setattr(transcribe, "DEFAULT_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(transcribe, "OBSIDIAN_OUTPUT_DIR", tmp_path)
     monkeypatch.setattr(transcribe, "TRANSCRIPT_DIR", transcript_dir)
     monkeypatch.setattr(transcribe, "DONE_DIR", done_dir)
     monkeypatch.setattr(transcribe, "AUDIO_TMP_DIR", audio_dir)
+    monkeypatch.setattr(transcribe, "SUBS_TMP_DIR", subs_dir)
 
 
 # --- get_videos ---
@@ -150,7 +153,7 @@ class TestGetSubtitles:
         srt_content = "1\n00:00:01,000 --> 00:00:03,000\nこんにちは\n\n2\n00:00:03,000 --> 00:00:05,000\n今日は料理します\n"
 
         def fake_run(cmd, **kw):
-            Path(f"/tmp/yt_subs_{video['id']}.ja.srt").write_text(srt_content)
+            (transcribe.SUBS_TMP_DIR / f"{video['id']}.ja.srt").write_text(srt_content)
             return _make_run_result("")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
@@ -165,7 +168,7 @@ class TestGetSubtitles:
 
         def fake_run(cmd, **kw):
             if "en" in cmd:
-                Path(f"/tmp/yt_subs_{video['id']}.en.srt").write_text(srt_content)
+                (transcribe.SUBS_TMP_DIR / f"{video['id']}.en.srt").write_text(srt_content)
             return _make_run_result("")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
