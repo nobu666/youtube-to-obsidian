@@ -13,6 +13,16 @@ def override_dirs(tmp_path, monkeypatch):
     monkeypatch.setattr(convert, "DEFAULT_OUTPUT_DIR", tmp_path)
 
 
+@pytest.fixture(autouse=True)
+def _stub_dns(monkeypatch):
+    # SSRFガードのDNS解決をスタブ化し、テストを実ネットワークから切り離す（公開IP扱い）
+    import socket
+    monkeypatch.setattr(
+        "url_guard.socket.getaddrinfo",
+        lambda *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", 0))],
+    )
+
+
 # --- source_id ---
 
 
@@ -189,3 +199,36 @@ class TestMain:
         convert.main()
         transcript_dir = tmp_path / ".transcripts"
         assert len(list(transcript_dir.glob("*.txt"))) == 1
+
+
+class TestZipBomb:
+    def test_rejects_high_ratio_bomb(self, tmp_path):
+        import zipfile
+        bomb = tmp_path / "bomb.zip"
+        with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("big.txt", b"\0" * (5 * 1024 * 1024))  # 5MBのゼロ→高圧縮比
+        assert convert.check_zip_safe(str(bomb)) is not None
+
+    def test_rejects_too_many_entries(self, tmp_path):
+        import zipfile
+        many = tmp_path / "many.zip"
+        with zipfile.ZipFile(many, "w") as zf:
+            for i in range(convert.ZIP_MAX_ENTRIES + 5):
+                zf.writestr(f"f{i}.txt", "x")
+        assert convert.check_zip_safe(str(many)) is not None
+
+    def test_allows_normal_zip(self, tmp_path):
+        import zipfile
+        ok = tmp_path / "ok.zip"
+        with zipfile.ZipFile(ok, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("a.txt", "hello world, this is normal short content")
+        assert convert.check_zip_safe(str(ok)) is None
+
+    def test_convert_rejects_bomb_file(self, tmp_path, monkeypatch):
+        import zipfile
+        bomb = tmp_path / "bomb.zip"
+        with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("big.txt", b"\0" * (5 * 1024 * 1024))
+        # MarkItDownを触る前に弾く（呼ばれたら失敗させる）
+        monkeypatch.setattr(convert, "MarkItDown", lambda: (_ for _ in ()).throw(AssertionError("zipは展開前に弾くべき")))
+        assert convert.convert(str(bomb), tmp_path) is False

@@ -57,6 +57,32 @@ def title_from_url(url):
     return parsed.netloc
 
 
+# zip爆弾対策の上限
+ZIP_MAX_ENTRIES = 1000
+ZIP_MAX_TOTAL_BYTES = 500 * 1024 * 1024   # 展開後の合計サイズ上限 500MB
+ZIP_MAX_RATIO = 100                        # 1エントリの展開/圧縮比の上限
+
+
+def check_zip_safe(path):
+    """zip爆弾チェック。危険なら理由文字列、安全なら None を返す。"""
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as zf:
+            infos = zf.infolist()
+            if len(infos) > ZIP_MAX_ENTRIES:
+                return f"エントリ数が多すぎます ({len(infos)} > {ZIP_MAX_ENTRIES})"
+            total = 0
+            for zi in infos:
+                total += zi.file_size
+                if total > ZIP_MAX_TOTAL_BYTES:
+                    return f"展開後の合計サイズが大きすぎます (> {ZIP_MAX_TOTAL_BYTES} bytes)"
+                if zi.compress_size > 0 and zi.file_size / zi.compress_size > ZIP_MAX_RATIO:
+                    return f"圧縮率が異常です（zip爆弾の疑い）: {zi.filename}"
+    except zipfile.BadZipFile:
+        return "不正なzipファイルです"
+    return None
+
+
 def convert(source, output_dir):
     """MarkItDownでソースをMarkdown化し、.transcripts/に保存"""
     transcript_dir = output_dir / ".transcripts"
@@ -76,6 +102,11 @@ def convert(source, output_dir):
             assert_safe_url(source)
         except UnsafeURLError as e:
             print(f"  アクセスをブロックしました: {e}")
+            return False
+    elif str(source).lower().endswith(".zip"):
+        reason = check_zip_safe(source)
+        if reason:
+            print(f"  zipを拒否: {reason}")
             return False
 
     md = MarkItDown()
